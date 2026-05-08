@@ -1,37 +1,25 @@
 name: Deploy to GitHub Pages
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Install and Build Astro
-        uses: withastro/action@v3
+      - uses: actions/checkout@v4
+      - uses: withastro/action@v3
         with:
-          package-manager: npm # npm을 패키지 매니저로 강제 지정
-
+          package-manager: npm
   deploy:
     needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Finalize Deployment
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
