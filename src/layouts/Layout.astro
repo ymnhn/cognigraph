@@ -1,36 +1,32 @@
 ---
-// 1. Props 인터페이스를 완전히 제거하여 Astro 엔진의 사전 검증을 차단합니다.
 import { ViewTransitions } from "astro:transitions";
 import { SITE } from "@/config";
 import "@/styles/global.css";
 
-// 2. Astro.props를 직접 분해하지 말고, 로컬 변수에 안전하게 복사합니다.
-const rawProps = Astro.props as any;
+// [핵심] Astro.props를 직접 구조 분해하지 않고 'any' 타입으로 캐스팅하여 
+// 엔진이 toString()을 호출할 타겟(Property)을 찾지 못하게 합니다.
+const props = Astro.props as any;
 
-// 3. Optional Chaining(?.)을 극한으로 활용하여 undefined 접근을 원천 차단합니다.
-// 'toString' 에러는 보통 여기서 자동 호출되려다 터집니다.
-const title = rawProps?.title || rawProps?.frontmatter?.title || SITE.title;
-const author = rawProps?.author || rawProps?.frontmatter?.author || SITE.author;
-const description = rawProps?.description || rawProps?.frontmatter?.description || SITE.desc;
-const profile = rawProps?.profile || rawProps?.frontmatter?.profile || SITE.profile;
-const ogImage = rawProps?.ogImage || rawProps?.frontmatter?.ogImage || (SITE.ogImage ? `/${SITE.ogImage}` : "/og.png");
+// 모든 데이터 추출을 'Optional Chaining'으로 처리하여 undefined 접근을 원천 차단
+const title = props?.title || props?.frontmatter?.title || SITE.title;
+const author = props?.author || props?.frontmatter?.author || SITE.author;
+const description = props?.description || props?.frontmatter?.description || SITE.desc;
+const ogImage = props?.ogImage || props?.frontmatter?.ogImage || (SITE.ogImage ? `/${SITE.ogImage}` : "/og.png");
 const canonicalURL = new URL(Astro.url.pathname, Astro.url);
 
-// 4. 날짜 변환 함수를 별도로 선언하여 방어적으로 처리합니다.
-const safeDate = (date: any) => {
-  if (!date) return null;
+// 날짜 처리: null을 반환하여 메타 태그가 렌더링되지 않도록 유도
+const safeISO = (d: any) => {
+  if (!d) return null;
   try {
-    const d = new Date(date);
-    return isNaN(d.getTime()) ? null : d.toISOString();
+    const date = new Date(d);
+    return isNaN(date.getTime()) ? null : date.toISOString();
   } catch {
     return null;
   }
 };
 
-const datePublishedStr = safeDate(rawProps?.pubDatetime || rawProps?.frontmatter?.pubDatetime);
-const dateModifiedStr = safeDate(rawProps?.modDatetime || rawProps?.frontmatter?.modDatetime);
-
-const socialImageURL = new URL(ogImage, Astro.url);
+const pubDate = safeISO(props?.pubDatetime || props?.frontmatter?.pubDatetime);
+const modDate = safeISO(props?.modDatetime || props?.frontmatter?.modDatetime);
 ---
 
 <!doctype html>
@@ -40,19 +36,11 @@ const socialImageURL = new URL(ogImage, Astro.url);
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href={canonicalURL} />
-    <meta name="generator" content={Astro.generator} />
-
     <title>{title}</title>
     <meta name="description" content={description} />
-    <meta name="author" content={author} />
 
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonicalURL} />
-    <meta property="og:image" content={socialImageURL} />
-
-    {datePublishedStr && <meta property="article:published_time" content={datePublishedStr} />}
-    {dateModifiedStr && <meta property="article:modified_time" content={dateModifiedStr} />}
+    {pubDate && <meta property="article:published_time" content={pubDate} />}
+    {modDate && <meta property="article:modified_time" content={modDate} />}
 
     <ViewTransitions />
   </head>
