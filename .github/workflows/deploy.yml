@@ -15,6 +15,9 @@ jobs:
       - uses: withastro/action@v3
         with:
           package-manager: npm
+        env:
+          # 캐시를 무시하고 새로 설치하도록 유도
+          NODE_ENV: production
   deploy:
     needs: build
     runs-on: ubuntu-latest
