@@ -13,14 +13,16 @@ export default defineConfig({
   
   // astro:env 모듈 에러 해결을 위한 스마 정의
   experimental: {
-    env: {
-      schema: {
-        // 실제 Layout 등에서 환경변수를 쓰지 않더라도 
-        // 빈 스키마나 기본값을 정의해야 모듈이 생성됩니다.
-      },
+  env: {
+    schema: {
+      PUBLIC_GOOGLE_SITE_VERIFICATION: envField.string({
+        context: 'client',
+        access: 'public',
+        optional: true, // 값이 없어도 빌드가 실패하지 않도록 설정
+      }),
     },
   },
-
+});
   integrations: [
     tailwind({
       applyBaseStyles: false,
