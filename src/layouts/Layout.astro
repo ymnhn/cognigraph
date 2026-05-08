@@ -36,11 +36,25 @@ const modDate = safeISO(props?.modDatetime || props?.frontmatter?.modDatetime);
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href={canonicalURL} />
+    <meta name="theme-color" content="" />
     <title>{title}</title>
     <meta name="description" content={description} />
 
     {pubDate && <meta property="article:published_time" content={pubDate} />}
     {modDate && <meta property="article:modified_time" content={modDate} />}
+
+    <!-- Inline theme script: runs synchronously before paint to prevent FOUC -->
+    <script is:inline>
+      const THEME = "theme";
+      const DARK = "dark";
+      const LIGHT = "light";
+      const storedTheme = localStorage.getItem(THEME);
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const themeValue = storedTheme || (prefersDark ? DARK : LIGHT);
+      document.documentElement.setAttribute("data-theme", themeValue);
+      // Expose for theme.ts
+      window.theme = { themeValue };
+    </script>
 
     <slot name="head" />
 

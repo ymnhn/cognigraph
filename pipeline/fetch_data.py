@@ -4,35 +4,40 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import feedparser
-from datetime import datetime
+from datetime import datetime, timezone
 from sentence_transformers import SentenceTransformer, util
 
 # --- CONFIGURATION ---
-# Focus on Cognitive Science and Neural Manifolds for your college project
 SEARCH_QUERY = 'all:"cognitive science" OR all:"neural manifolds" OR all:"active inference"'
 MAX_RESULTS = 15
-THRESHOLD = 0.5 
-MODEL_NAME = 'all-MiniLM-L6-v2'
+THRESHOLD = 0.5
+MODEL_NAME = "all-MiniLM-L6-v2"
+
+# Must match BLOG_PATH in src/content.config.ts
+OUTPUT_DIR = "src/data/blog"
+
+TARGET_CONCEPT = (
+    "Cognitive science research involving neural representations, "
+    "computational modeling, active inference, and brain functions."
+)
+
 
 def fetch_arxiv_papers():
-    """Fetches papers from ArXiv with proper URL encoding and retry logic."""
+    """Fetch papers from arXiv with proper URL encoding and retry logic."""
     base_url = "http://export.arxiv.org/api/query?"
-    
-    # Properly encode the query to avoid InvalidURL control character errors
     params = {
         "search_query": SEARCH_QUERY,
         "start": 0,
         "max_results": MAX_RESULTS,
         "sortBy": "submittedDate",
-        "sortOrder": "descending"
+        "sortOrder": "descending",
     }
-    
     url = base_url + urllib.parse.urlencode(params)
-    
     print(f"Fetching papers from arXiv...")
+
     for attempt in range(3):
         try:
-            response = urllib.request.urlopen(url)
+            response = urllib.request.urlopen(url, timeout=30)
             return response.read()
         except urllib.error.HTTPError as e:
             if e.code == 429:
@@ -40,19 +45,35 @@ def fetch_arxiv_papers():
                 print(f"Rate limited (429). Retrying in {wait}s...")
                 time.sleep(wait)
             else:
-                raise e
-    raise Exception("ArXiv API unreachable after multiple attempts.")
+                raise
+    raise Exception("arXiv API unreachable after 3 attempts.")
+
+
+def sanitize_filename(title: str, max_length: int = 50) -> str:
+    """Convert a paper title into a safe slug-style filename."""
+    clean = "".join(c if c.isalnum() or c == " " else "" for c in title).strip()
+    slug = clean.replace(" ", "-").lower()
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug[:max_length].rstrip("-")
+
+
+def format_astro_date(date_str: str) -> str:
+    """Parse arXiv date string and return ISO 8601 format accepted by Astro z.date()."""
+    dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
+def escape_yaml(s: str) -> str:
+    """Escape a string for use inside YAML double-quotes."""
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
 
 def main():
-    # 1. Initialize the Semantic Gatekeeper
-    print(f"Initializing Semantic Gatekeeper with {MODEL_NAME}...")
+    print(f"Loading model '{MODEL_NAME}'...")
     model = SentenceTransformer(MODEL_NAME)
-    
-    # The "Ideal" research topic anchor for your scoring logic
-    target_concept = "Cognitive science research involving neural representations, computational modeling, and brain functions."
-    target_embedding = model.encode(target_concept, convert_to_tensor=True)
+    target_embedding = model.encode(TARGET_CONCEPT, convert_to_tensor=True)
 
-    # 2. Get Data
     try:
         xml_data = fetch_arxiv_papers()
         feed = feedparser.parse(xml_data)
@@ -60,52 +81,75 @@ def main():
         print(f"Error fetching data: {e}")
         return
 
-    # Ensure Astro content directory exists
-    os.makedirs("src/content/blog", exist_ok=True)
+    entries = feed.get("entries", [])
+    print(f"Received {len(entries)} entries from arXiv.")
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     count = 0
-    for entry in feed.entries:
-        # 3. Semantic Scoring
-        text_to_score = f"{entry.title}. {entry.summary}"
+    for entry in entries:
+        title = entry.get("title", "").strip().replace("\n", " ")
+        summary = entry.get("summary", "").strip().replace("\n", " ")
+        link = entry.get("link", "")
+        published = entry.get("published", "")
+
+        if not title or not published:
+            continue
+
+        # Semantic scoring
+        text_to_score = f"{title}. {summary}"
         entry_embedding = model.encode(text_to_score, convert_to_tensor=True)
         score = util.pytorch_cos_sim(target_embedding, entry_embedding).item()
 
-        if score >= THRESHOLD:
-            # 4. Generate Frontmatter for AstroPaper
-            # Clean title for filename (filesystem friendly)
-            clean_title = "".join(c for c in entry.title if c.isalnum() or c==' ').rstrip()
-            slug = clean_title.replace(' ', '-').lower()[:50]
-            filename = f"src/content/blog/{slug}.md"
-            
-            # Format date for Astro
-            pub_date = datetime.strptime(entry.published, '%Y-%m-%dT%H:%M:%SZ')
-            
-            content = f"""---
+        if score < THRESHOLD:
+            continue
+
+        slug = sanitize_filename(title)
+        if not slug:
+            continue
+
+        filepath = os.path.join(OUTPUT_DIR, f"{slug}.md")
+        if os.path.exists(filepath):
+            print(f"Skipping (already exists): {title}")
+            continue
+
+        try:
+            pub_date = format_astro_date(published)
+        except ValueError:
+            print(f"Skipping (bad date '{published}'): {title}")
+            continue
+
+        # Description uses only Zod-schema-compliant fields
+        description = f"[arXiv]({link}) — relevance score: {score:.2f}"
+        body_summary = summary[:2000] + ("..." if len(summary) > 2000 else "")
+
+        content = f"""---
 author: "CogniGraph Bot"
-pubDatetime: {pub_date.strftime('%Y-%m-%dT%H:%M:%SZ')}
-title: "{entry.title}"
-postSlug: "{slug}"
+pubDatetime: {pub_date}
+title: "{escape_yaml(title)}"
 featured: false
 draft: false
 tags: ["research", "cognitive-science"]
-description: "Semantic Relevance Score: {score:.4f}"
-score: {score:.4f}
-sourceUrl: "{entry.link}"
+description: "{escape_yaml(description)}"
 ---
 
 ## Abstract
-{entry.summary}
+
+{body_summary}
 
 ---
-*This paper was automatically curated based on semantic similarity to core Cognitive Science themes.*
-"""
-            with open(filename, "w", encoding="utf-8") as f:
-                f.write(content)
-            
-            print(f"Saved: {entry.title} (Score: {score:.2f})")
-            count += 1
 
-    print(f"Pipeline complete. {count} papers curated and saved to src/content/blog/.")
+*Automatically curated based on semantic similarity to core Cognitive Science themes.*
+*Relevance score: {score:.4f}*
+"""
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        print(f"Saved [{score:.2f}]: {title}")
+        count += 1
+
+    print(f"\nPipeline complete. {count} new paper(s) saved to {OUTPUT_DIR}/")
+
 
 if __name__ == "__main__":
     main()

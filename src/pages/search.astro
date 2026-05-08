@@ -34,7 +34,7 @@ const backUrl = SITE.showBackButton ? `${Astro.url.pathname}` : "/";
 
     onIdle(async () => {
       // @ts-expect-error — Missing types for @pagefind/default-ui package.
-      const { PagefindUI } = await import("@pagefind/default-ui");
+      const { PagefindUI } = await import(/* @vite-ignore */ "@pagefind/default-ui");
 
       // Display warning in dev mode
       if (import.meta.env.DEV) {

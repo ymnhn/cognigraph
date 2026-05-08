@@ -1,37 +1,38 @@
 ---
 layout: ../layouts/AboutLayout.astro
-title: "About"
+title: "About CogniGraph"
 ---
 
-AstroPaper is a minimal, accessible and SEO-friendly blog theme built with [Astro](https://astro.build/) and [Tailwind CSS](https://tailwindcss.com/).
+**CogniGraph** is an automated research dashboard that curates the latest academic papers in cognitive science, computational neuroscience, and related fields.
 
-![Astro Paper](/astropaper-og.jpg)
+## How it works
 
-AstroPaper provides a solid foundation for blogs, or even portfolios\_ with full markdown support, built-in dark mode, and a clean layout that works out-of-the-box.
+Every day, a GitHub Actions pipeline fetches new preprints from [arXiv](https://arxiv.org), scores them for semantic relevance against a target concept using a sentence-transformer model (`all-MiniLM-L6-v2`), and publishes the top-scoring papers as posts on this site.
 
-The blog posts in this theme also serve as guides, docs or example articles\_ making AstroPaper a flexible starting point for your next content-driven site.
+Papers are scored against this anchor concept:
+
+> *Cognitive science research involving neural representations, computational modeling, active inference, and brain functions.*
+
+Only papers that clear the relevance threshold are published — so everything here is directly on-topic.
+
+## Topics covered
+
+- Computational cognitive science
+- Neural manifolds and representational geometry
+- Active inference and predictive coding
+- Brain-computer interfaces
+- Artificial intelligence & human cognition
+- Memory, attention, and decision-making
 
 ## Features
 
-AstroPaper comes with a set of useful features that make content publishing easy and effective:
+- **Daily updates** — fresh papers every morning via a scheduled GitHub Action
+- **Semantic filtering** — only relevant papers make the cut
+- **Full-text search** — powered by [PageFind](https://pagefind.app/)
+- **Tag browsing** — explore by topic
+- **RSS feed** — subscribe at [/rss.xml](/rss.xml)
+- **Dark mode** — toggle in the header
 
-- SEO-friendly
-- Fast performance
-- Light & dark mode
-- Highly customizable
-- Organizable blog posts
-- Responsive & accessible
-- Static search with [PageFind](https://pagefind.app/)
-- Automatic social image generation
+## Source
 
-and so much more.
-
-## Show your support
-
-If you like [AstroPaper](https://github.com/satnaing/astro-paper), consider giving it a star ⭐️.
-
-Found a bug 🐛 or have an improvement ✨ in mind? Feel free to open an [issue](https://github.com/satnaing/astro-paper/issues), submit a [pull request](https://github.com/satnaing/astro-paper/pulls) or start a [discussion](https://github.com/satnaing/astro-paper/discussions).
-
-If you find this theme helpful, you can also [sponsor me on GitHub](https://github.com/sponsors/satnaing) or [buy me a coffee](https://buymeacoffee.com/satnaing) to show your support — every penny counts.
-
-Kyay zuu! 🙏🏼
+The full source code is on [GitHub](https://github.com/ymnhn/cognigraph). Pull requests and issues are welcome.

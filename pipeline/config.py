@@ -20,7 +20,7 @@ SIMILARITY_THRESHOLD = 0.60
 
 # 4. File Management
 # AstroPaper expects blog posts (our research papers) to be here
-OUTPUT_DIR = "src/content/blog"
+OUTPUT_DIR = "src/data/blog"
 
 # 5. Search API Parameters
 # We will use arXiv's open API for this example
