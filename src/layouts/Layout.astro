@@ -18,6 +18,9 @@ type Props = {
   scrollSmooth?: boolean;
 };
 
+---
+// ... (상단 import 및 Props 선언 생략)
+
 const {
   title = SITE.title,
   author = SITE.author,
@@ -32,14 +35,12 @@ const {
 
 const socialImageURL = new URL(ogImage, Astro.url);
 
-// 날짜 객체가 있을 때만 toISOString()을 호출하도록 엄격하게 제한
-const structuredData = {
+// 1. 기본 객체를 먼저 만듭니다.
+const structuredData: any = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
   headline: `${title}`,
   image: `${socialImageURL}`,
-  ...(pubDatetime instanceof Date && { datePublished: pubDatetime.toISOString() }),
-  ...(modDatetime instanceof Date && { dateModified: modDatetime.toISOString() }),
   author: [
     {
       "@type": "Person",
@@ -48,8 +49,16 @@ const structuredData = {
     },
   ],
 };
----
 
+// 2. 날짜가 실제 Date 객체일 때만 문자열로 변환하여 추가합니다.
+if (pubDatetime && pubDatetime instanceof Date && !isNaN(pubDatetime.getTime())) {
+  structuredData.datePublished = pubDatetime.toISOString();
+}
+
+if (modDatetime && modDatetime instanceof Date && !isNaN(modDatetime.getTime())) {
+  structuredData.dateModified = modDatetime.toISOString();
+}
+---
 <!doctype html>
 <html
   dir={SITE.dir}
