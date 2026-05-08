@@ -78,10 +78,19 @@
       @apply border-s-accent/80 break-words opacity-80;
     }
 
-    details {
-      @apply inline-block cursor-pointer text-foreground select-none [&_p]:hidden [&_ul]:my-0!;
-    }
+  details {
+    @apply inline-block cursor-pointer text-foreground select-none;
+  }
 
+/* @apply 외부에서 표준 CSS 선택자로 처리합니다 */
+details p {
+  display: none;
+}
+
+details ul {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
     summary {
       @apply focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent focus-visible:outline-dashed;
     }
