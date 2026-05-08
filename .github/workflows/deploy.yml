@@ -2,13 +2,16 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ] # Runs whenever new code or research is pushed
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -19,6 +22,8 @@ jobs:
 
       - name: Install and Build Astro
         uses: withastro/action@v3
+        with:
+          package-manager: npm # npm을 패키지 매니저로 강제 지정
 
   deploy:
     needs: build

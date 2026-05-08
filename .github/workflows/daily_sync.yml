@@ -2,12 +2,20 @@ name: CogniGraph Daily Sync
 
 on:
   schedule:
-    - cron: '0 2 * * *' # Runs at 2:00 AM every night
-  workflow_dispatch:   # Allows you to run it manually for testing
+    - cron: '0 2 * * *' # 매일 새벽 2시에 실행
+  workflow_dispatch:   # 수동 실행 허용
+
+# Node.js 20 지원 중단 대비 및 최신 환경 설정
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # 레포지토리에 쓰기 권한 부여 (자동 커밋을 위해 필수)
+    permissions:
+      contents: write
+      
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -17,24 +25,38 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Libraries
-        run: |
-          python -m pip install --upgrade pip
-          pip install sentence-transformers torch
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r pipeline/requirements.txt
+          if [ -f pipeline/requirements.txt ]; then
+            pip install -r pipeline/requirements.txt
+          else
+            pip install sentence-transformers torch feedparser
+          fi
+
       - name: Run Curation Script
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }} # Add this line
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: python pipeline/fetch_data.py
 
-      - name: Save New Research to Repo
+      - name: Commit and Push changes
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/content/blog/*.md
-          git commit -m "chore: auto-curate new research" || echo "No new papers found"
-          git push
+          # 1. Git 사용자 설정
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # 2. .md 파일 존재 여부 확인 (Error 128 방지)
+          if ls src/content/blog/*.md 1> /dev/null 2>&1; then
+            git add src/content/blog/*.md
+            
+            # 3. 실제 변경 사항이 있는지 확인 (Nothing to commit 방지)
+            if ! git diff --cached --quiet; then
+              git commit -m "chore: auto-curate new research [skip ci]"
+              git push
+            else
+              echo "오늘 수집된 논문 중 임계값을 넘은 새로운 데이터가 없습니다."
+            fi
+          else
+            echo "수집된 .md 파일이 없습니다. 커밋을 건너뜁니다."
+          fi
