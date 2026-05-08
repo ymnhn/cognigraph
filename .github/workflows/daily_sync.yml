@@ -25,6 +25,7 @@ jobs:
       - name: Run Curation Script
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }} # Add this line
         run: python pipeline/fetch_data.py
 
       - name: Save New Research to Repo
