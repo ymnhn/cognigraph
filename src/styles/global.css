@@ -2,47 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 만약 기존에 특정 테마의 CSS를 import 하고 있었다면 경로를 확인하세요 */
 @import "./typography.css";
 
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
-
-:root,
-html[data-theme="light"] {
-  --background: #fdfdfd;
-  --foreground: #282728;
-  --accent: #006cac;
-  --muted: #e6e6e6;
-  --border: #ece9e9;
-}
-
-html[data-theme="dark"] {
-  --background: #212737;
-  --foreground: #eaedf3;
-  --accent: #ff6b01;
-  --muted: #343f60;
-  --border: #ab4b08;
-}
-
-@theme inline {
-  --font-app: var(--font-google-sans-code);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-accent: var(--accent);
-  --color-muted: var(--muted);
-  --color-border: var(--border);
-}
-
+/* 다크모드 변수 설정 */
 @layer base {
+  :root,
+  html[data-theme="light"] {
+    --background: #fdfdfd;
+    --foreground: #282728;
+    --accent: #006cac;
+    --muted: #e6e6e6;
+    --border: #ece9e9;
+  }
+
+  html[data-theme="dark"] {
+    --background: #212737;
+    --foreground: #eaedf3;
+    --accent: #ff6b01;
+    --muted: #343f60;
+    --border: #ab4b08;
+  }
+
   * {
+    /* 변수명을 tailwind.config.mjs에서 정의한 이름과 일치시킵니다 */
     @apply border-border outline-accent/75;
     scrollbar-width: auto;
-    scrollbar-color: var(--color-muted) transparent;
+    scrollbar-color: var(--muted) transparent;
   }
   html {
     @apply overflow-y-scroll scroll-smooth;
   }
   body {
+    /* font-app은 config에서 정의했으므로 그대로 사용 가능합니다 */
     @apply flex min-h-svh flex-col bg-background font-app text-foreground selection:bg-accent/75 selection:text-background;
   }
   a,
@@ -55,20 +46,21 @@ html[data-theme="dark"] {
   }
 }
 
-@utility max-w-app {
-  @apply max-w-3xl;
-}
+/* @utility 대신 @layer utilities를 사용하여 에러 해결 */
+@layer utilities {
+  .max-w-app {
+    @apply max-w-3xl;
+  }
 
-@utility app-layout {
-  @apply mx-auto w-full max-w-app px-4;
+  .app-layout {
+    @apply mx-auto w-full max-w-3xl px-4;
+  }
 }
 
 .active-nav {
   @apply underline decoration-wavy decoration-2 underline-offset-8;
 }
 
-/* Source: https://piccalil.li/blog/a-more-modern-css-reset/ */
-/* Anything that has been anchored to should have extra scroll margin */
 :target {
   scroll-margin-block: 1rem;
 }
