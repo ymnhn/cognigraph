@@ -3,7 +3,7 @@ import { ViewTransitions } from "astro:transitions";
 import { SITE } from "@/config";
 import "@/styles/global.css";
 
-// 환경 변수 선언
+// 1. 환경 변수 안전하게 선언
 const PUBLIC_GOOGLE_SITE_VERIFICATION = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION;
 
 type Props = {
@@ -32,7 +32,7 @@ const {
 
 const socialImageURL = new URL(ogImage, Astro.url);
 
-// 구조화 데이터 생성 (에러 방지를 위한 안전한 로직)
+// 2. 구조화 데이터 생성 - 가장 안전한 if 문 방식 사용
 const structuredData: any = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
@@ -47,18 +47,19 @@ const structuredData: any = {
   ],
 };
 
-if (pubDatetime && pubDatetime instanceof Date) {
+if (pubDatetime instanceof Date) {
   structuredData.datePublished = pubDatetime.toISOString();
 }
 
-if (modDatetime && modDatetime instanceof Date) {
+if (modDatetime instanceof Date) {
   structuredData.dateModified = modDatetime.toISOString();
 }
 ---
+
 <!doctype html>
 <html
   dir={SITE.dir}
-  lang=`${SITE.lang ?? "en"}`
+  lang={SITE.lang ?? "en"}
   class={`${scrollSmooth && "scroll-smooth"}`}
 >
   <head>
@@ -79,7 +80,7 @@ if (modDatetime && modDatetime instanceof Date) {
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:image" content={socialImageURL} />
 
-    {/* 날짜가 실제 Date 객체인지 확인 후 렌더링 */}
+    {/* 3. 메타 태그 내 날짜 처리 보강 (가장 중요한 부분) */}
     {
       pubDatetime instanceof Date && (
         <meta
@@ -131,27 +132,13 @@ if (modDatetime && modDatetime instanceof Date) {
 
     <script is:inline>
       (function () {
-        const initialColorScheme = ""; 
         const currentTheme = localStorage.getItem("theme");
-
         function getPreferTheme() {
           if (currentTheme) return currentTheme;
-          if (initialColorScheme) return initialColorScheme;
-          return window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "dark"
-            : "light";
+          return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
         }
-
         const themeValue = getPreferTheme();
         document.firstElementChild?.setAttribute("data-theme", themeValue);
-
-        window.theme = {
-          themeValue: themeValue,
-          getTheme: () => window.theme.themeValue,
-          setTheme: val => {
-            window.theme.themeValue = val;
-          },
-        };
       })();
     </script>
   </head>
