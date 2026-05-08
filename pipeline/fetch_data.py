@@ -10,7 +10,7 @@ from sentence_transformers import SentenceTransformer, util
 # --- CONFIGURATION ---
 SEARCH_QUERY = 'all:"cognitive science" OR all:"neural manifolds" OR all:"active inference"'
 MAX_RESULTS = 15
-THRESHOLD = 0.5
+THRESHOLD = 0.25
 MODEL_NAME = "all-MiniLM-L6-v2"
 
 # Must match BLOG_PATH in src/content.config.ts
