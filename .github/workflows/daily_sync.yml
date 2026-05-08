@@ -21,7 +21,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install sentence-transformers torch
-
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r pipeline/requirements.txt
       - name: Run Curation Script
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
