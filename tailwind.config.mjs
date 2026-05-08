@@ -11,14 +11,18 @@ export default {
         ring: "hsl(var(--ring) / <alpha-value>)",
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
+        // muted에 투명도 지원 추가
+        muted: {
+          DEFAULT: "hsl(var(--muted) / <alpha-value>)",
+          foreground: "hsl(var(--muted-foreground) / <alpha-value>)",
+        },
         accent: {
           DEFAULT: "hsl(var(--accent) / <alpha-value>)",
           foreground: "hsl(var(--accent-foreground) / <alpha-value>)",
         },
       },
       fontFamily: {
-        // 'font-app' 클래스를 위해 'app' 키를 추가합니다.
-        app: ['Inter', 'sans-serif'], 
+        app: ['Inter', 'sans-serif'],
         sans: ['Inter', 'sans-serif'],
       },
     },
