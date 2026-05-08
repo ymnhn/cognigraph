@@ -1,3 +1,10 @@
+// Props를 구조분해 할당하기 직전에 실행
+const props = Astro.props;
+Object.keys(props).forEach(key => {
+  if (props[key] === undefined) {
+    delete props[key];
+  }
+});
 ---
 import { ViewTransitions } from "astro:transitions";
 import { SITE } from "@/config";
