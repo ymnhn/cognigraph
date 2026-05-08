@@ -1,5 +1,5 @@
 ---
-import { ClientRouter } from "astro:transitions";
+import { ViewTransitions } from "astro:transitions";
 import { SITE } from "@/config";
 import "@/styles/global.css";
 
@@ -133,7 +133,7 @@ const structuredData = {
       )
     }
 
-    <ClientRouter />
+    <ViewTransitions />
 
     <!-- Minimal inline script to prevent FOUC - sets theme immediately -->
     <script is:inline>
