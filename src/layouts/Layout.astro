@@ -3,7 +3,7 @@ import { ViewTransitions } from "astro:transitions";
 import { SITE } from "@/config";
 import "@/styles/global.css";
 
-// 1. 빌드 에러 방지를 위한 환경 변수 선언 추가
+// 환경 변수 선언 (ReferenceError 방지)
 const PUBLIC_GOOGLE_SITE_VERIFICATION = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION;
 
 type Props = {
@@ -32,14 +32,14 @@ const {
 
 const socialImageURL = new URL(ogImage, Astro.url);
 
+// 날짜 객체가 있을 때만 toISOString()을 호출하도록 엄격하게 제한
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
   headline: `${title}`,
   image: `${socialImageURL}`,
-  // pubDatetime이 있을 때만 문자열로 변환하고, 없으면 아예 속성을 생략하거나 null을 전달합니다.
-  ...(pubDatetime && { datePublished: pubDatetime.toISOString() }),
-  ...(modDatetime && { dateModified: modDatetime.toISOString() }),
+  ...(pubDatetime instanceof Date && { datePublished: pubDatetime.toISOString() }),
+  ...(modDatetime instanceof Date && { dateModified: modDatetime.toISOString() }),
   author: [
     {
       "@type": "Person",
@@ -63,22 +63,20 @@ const structuredData = {
     <link rel="canonical" href={canonicalURL} />
     <meta name="generator" content={Astro.generator} />
 
-    <!-- General Meta Tags -->
     <title>{title}</title>
     <meta name="title" content={title} />
     <meta name="description" content={description} />
     <meta name="author" content={author} />
     <link rel="sitemap" href="/sitemap-index.xml" />
 
-    <!-- Open Graph / Facebook -->
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:image" content={socialImageURL} />
 
-    <!-- Article Published/Modified time -->
+    {/* 날짜가 실제 Date 객체인지 확인 후 렌더링 */}
     {
-      pubDatetime && (
+      pubDatetime instanceof Date && (
         <meta
           property="article:published_time"
           content={pubDatetime.toISOString()}
@@ -86,7 +84,7 @@ const structuredData = {
       )
     }
     {
-      modDatetime && (
+      modDatetime instanceof Date && (
         <meta
           property="article:modified_time"
           content={modDatetime.toISOString()}
@@ -94,14 +92,12 @@ const structuredData = {
       )
     }
 
-    <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content={canonicalURL} />
     <meta property="twitter:title" content={title} />
     <meta property="twitter:description" content={description} />
     <meta property="twitter:image" content={socialImageURL} />
 
-    <!-- Google JSON-LD Structured data -->
     <script
       type="application/ld+json"
       is:inline
@@ -118,7 +114,6 @@ const structuredData = {
     <meta name="theme-color" content="" />
 
     {
-      // 2. 변수가 선언되었으므로 이제 ReferenceError 없이 안전하게 렌더링됩니다.
       PUBLIC_GOOGLE_SITE_VERIFICATION && (
         <meta
           name="google-site-verification"
@@ -127,7 +122,6 @@ const structuredData = {
       )
     }
 
-    <!-- 3. Astro 4 호환을 위해 ClientRouter 대신 ViewTransitions 사용 -->
     <ViewTransitions />
 
     <script is:inline>
