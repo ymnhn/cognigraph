@@ -3,6 +3,9 @@ import { ViewTransitions } from "astro:transitions";
 import { SITE } from "@/config";
 import "@/styles/global.css";
 
+// 1. 빌드 에러 방지를 위한 환경 변수 선언 추가
+const PUBLIC_GOOGLE_SITE_VERIFICATION = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION;
+
 type Props = {
   title?: string;
   author?: string;
@@ -104,8 +107,6 @@ const structuredData = {
       set:html={JSON.stringify(structuredData)}
     />
 
-    <!-- Enable RSS feed auto-discovery  -->
-    <!-- https://docs.astro.build/en/recipes/rss/#enabling-rss-feed-auto-discovery -->
     <link
       rel="alternate"
       type="application/rss+xml"
@@ -116,9 +117,7 @@ const structuredData = {
     <meta name="theme-color" content="" />
 
     {
-      // If PUBLIC_GOOGLE_SITE_VERIFICATION is set in the environment variable,
-      // include google-site-verification tag in the heading
-      // Learn more: https://support.google.com/webmasters/answer/9008080#meta_tag_verification&zippy=%2Chtml-tag
+      // 2. 변수가 선언되었으므로 이제 ReferenceError 없이 안전하게 렌더링됩니다.
       PUBLIC_GOOGLE_SITE_VERIFICATION && (
         <meta
           name="google-site-verification"
@@ -127,12 +126,12 @@ const structuredData = {
       )
     }
 
+    <!-- 3. Astro 4 호환을 위해 ClientRouter 대신 ViewTransitions 사용 -->
     <ViewTransitions />
 
-    <!-- Minimal inline script to prevent FOUC - sets theme immediately -->
     <script is:inline>
       (function () {
-        const initialColorScheme = ""; // "light" | "dark"
+        const initialColorScheme = ""; 
         const currentTheme = localStorage.getItem("theme");
 
         function getPreferTheme() {
@@ -144,11 +143,8 @@ const structuredData = {
         }
 
         const themeValue = getPreferTheme();
-
-        // Set theme immediately to prevent flash
         document.firstElementChild?.setAttribute("data-theme", themeValue);
 
-        // Export minimal API for external script
         window.theme = {
           themeValue: themeValue,
           getTheme: () => window.theme.themeValue,
@@ -161,8 +157,6 @@ const structuredData = {
   </head>
   <body>
     <slot />
-
-    <!-- Load full theme logic -->
     <script src="../scripts/theme.ts"></script>
   </body>
 </html>
