@@ -30,7 +30,25 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }} # Add this line
         run: python pipeline/fetch_data.py
-
+      - name: Commit and Push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Check if any .md files exist before trying to add them
+          if ls src/content/blog/*.md 1> /dev/null 2>&1; then
+            git add src/content/blog/*.md
+            
+            # Check for actual changes to avoid 'nothing to commit' error
+            if ! git diff --cached --quiet; then
+              git commit -m "Automated Curation: New research added"
+              git push
+            else
+              echo "No new changes to commit today."
+            fi
+          else
+            echo "No .md files found. Skipping commit step."
+          fi
       - name: Save New Research to Repo
         run: |
           git config --global user.name "github-actions[bot]"
