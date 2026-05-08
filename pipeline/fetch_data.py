@@ -1,105 +1,97 @@
 import os
-import re
+import time
 import urllib.request
-import xml.etree.ElementTree as ET
+import feedparser
 from datetime import datetime
 from sentence_transformers import SentenceTransformer, util
 
-# Import your settings
-import config
+# --- CONFIGURATION ---
+# The 'Cognitive Science' focus for your college project
+SEARCH_QUERY = 'all:"cognitive science" OR all:"neural manifolds" OR all:"active inference"'
+MAX_RESULTS = 10
+# Similarity threshold (0.0 to 1.0)
+THRESHOLD = 0.5 
+MODEL_NAME = 'all-MiniLM-L6-v2'
 
 def fetch_arxiv_papers():
-    """Fetches recent papers from the arXiv API."""
-    print(f"Fetching top {config.MAX_RESULTS} papers from arXiv...")
+    """Fetches papers from ArXiv with basic retry logic for 429 errors."""
+    base_url = "http://export.arxiv.org/api/query?"
+    params = f"search_query={SEARCH_QUERY}&start=0&max_results={MAX_RESULTS}&sortBy=submittedDate&sortOrder=descending"
+    url = base_url + params
     
-    # Format the query for the URL
-    query = urllib.parse.quote(config.SEARCH_QUERY)
-    url = f"http://export.arxiv.org/api/query?search_query={query}&start=0&max_results={config.MAX_RESULTS}&sortBy=submittedDate&sortOrder=descending"
-    
-    response = urllib.request.urlopen(url)
-    xml_data = response.read()
-    root = ET.fromstring(xml_data)
-    
-    papers = []
-    # arXiv XML namespace
-    ns = {'atom': 'http://www.w3.org/2005/Atom'}
-    
-    for entry in root.findall('atom:entry', ns):
-        paper = {
-            'id': entry.find('atom:id', ns).text.split('/')[-1],
-            'title': entry.find('atom:title', ns).text.replace('\n', ' ').strip(),
-            'abstract': entry.find('atom:summary', ns).text.replace('\n', ' ').strip(),
-            'date': entry.find('atom:published', ns).text
-        }
-        papers.append(paper)
-        
-    return papers
-
-def clean_filename(title):
-    """Makes a string safe to use as a file name."""
-    clean = re.sub(r'[^\w\s-]', '', title).strip().lower()
-    return re.sub(r'\s+', '-', clean)[:50] # Limit length
-
-def save_to_markdown(paper, score):
-    """Saves a paper as an AstroPaper-compatible Markdown file."""
-    # Ensure the output directory exists
-    os.makedirs(config.OUTPUT_DIR, exist_ok=True)
-    
-    filename = f"{clean_filename(paper['title'])}.md"
-    filepath = os.path.join(config.OUTPUT_DIR, filename)
-    
-    # Format the date for AstroPaper (ISO format)
-    pub_date = datetime.strptime(paper['date'], "%Y-%m-%dT%H:%M:%SZ")
-    
-    # AstroPaper Frontmatter
-    content = f"""---
-author: "CogniGraph Bot"
-pubDatetime: {pub_date.isoformat()}
-title: "{paper['title']}"
-postSlug: "{clean_filename(paper['title'])}"
-featured: false
-draft: false
-tags:
-  - "research"
-  - "cognitive science"
-description: "Semantic Match: {score:.2f} | ArXiv ID: {paper['id']}"
----
-
-### Abstract
-{paper['abstract']}
-
----
-**Source:** [Read Full Paper on arXiv](https://arxiv.org/abs/{paper['id']})
-*Curated via Semantic Scoring (Threshold: {config.SIMILARITY_THRESHOLD})*
-"""
-    
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(content)
-    print(f"Saved: {filename} (Score: {score:.2f})")
+    print(f"Fetching papers from arXiv...")
+    for attempt in range(3):
+        try:
+            response = urllib.request.urlopen(url)
+            return response.read()
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                wait = 15 * (attempt + 1)
+                print(f"Rate limited (429). Retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                raise e
+    raise Exception("ArXiv API unreachable after multiple attempts.")
 
 def main():
-    print("Initializing Semantic Gatekeeper...")
-    # Load the AI model
-    model = SentenceTransformer(config.MODEL_NAME)
-    target_embedding = model.encode(config.TARGET_CONCEPT, convert_to_tensor=True)
+    # 1. Initialize the Semantic Gatekeeper
+    print(f"Initializing Semantic Gatekeeper with {MODEL_NAME}...")
+    # HF_TOKEN env var is used automatically by the library if present
+    model = SentenceTransformer(MODEL_NAME)
     
-    # Get raw data
-    raw_papers = fetch_arxiv_papers()
+    # Define your "Ideal" research topic for scoring
+    target_concept = "Applications of cognitive science, neural representations, and computational modeling of brain functions."
+    target_embedding = model.encode(target_concept, convert_to_tensor=True)
+
+    # 2. Get Data
+    xml_data = fetch_arxiv_papers()
+    feed = feedparser.parse(xml_data)
     
-    curated_count = 0
-    print("\nScoring Papers...")
-    
-    for paper in raw_papers:
-        # Calculate semantic similarity
-        abstract_embedding = model.encode(paper['abstract'], convert_to_tensor=True)
-        score = util.cos_sim(target_embedding, abstract_embedding).item()
-        
-        # Filter based on your config threshold
-        if score >= config.SIMILARITY_THRESHOLD:
-            save_to_markdown(paper, score)
-            curated_count += 1
+    # Ensure output directory exists
+    os.makedirs("src/content/blog", exist_ok=True)
+
+    count = 0
+    for entry in feed.entries:
+        # 3. Semantic Scoring
+        text_to_score = f"{entry.title}. {entry.summary}"
+        entry_embedding = model.encode(text_to_score, convert_to_tensor=True)
+        score = util.pytorch_cos_sim(target_embedding, entry_embedding).item()
+
+        if score >= THRESHOLD:
+            # 4. Generate Frontmatter
+            # Clean title for filename
+            clean_title = "".join(c for c in entry.title if c.isalnum() or c==' ').rstrip()
+            filename = f"src/content/blog/{clean_title.replace(' ', '-').lower()[:50]}.md"
             
-    print(f"\nPipeline Complete! Curated {curated_count} out of {len(raw_papers)} papers.")
+            # Format date for Astro
+            pub_date = datetime.strptime(entry.published, '%Y-%m-%dT%H:%M:%SZ')
+            
+            content = f"""---
+author: "CogniGraph Bot"
+pubDatetime: {pub_date.strftime('%Y-%m-%dT%H:%M:%SZ')}
+title: "{entry.title}"
+postSlug: "{clean_title.replace(' ', '-').lower()[:50]}"
+featured: false
+draft: false
+tags: ["research", "cognitive-science"]
+description: "Semantic Relevance Score: {score:.4f}"
+score: {score:.4f}
+sourceUrl: "{entry.link}"
+---
+
+## Abstract
+{entry.summary}
+
+---
+*This paper was automatically curated based on semantic similarity to core Cognitive Science themes.*
+"""
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(content)
+            
+            print(f"Saved: {entry.title} (Score: {score:.2f})")
+            count += 1
+
+    print(f"Pipeline complete. {count} papers curated.")
 
 if __name__ == "__main__":
     main()
