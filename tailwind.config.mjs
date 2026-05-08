@@ -6,7 +6,6 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 기존 border 외에 accent 색상을 추가합니다.
         border: "hsl(var(--border) / <alpha-value>)",
         input: "hsl(var(--input) / <alpha-value>)",
         ring: "hsl(var(--ring) / <alpha-value>)",
@@ -18,6 +17,8 @@ export default {
         },
       },
       fontFamily: {
+        // 'font-app' 클래스를 위해 'app' 키를 추가합니다.
+        app: ['Inter', 'sans-serif'], 
         sans: ['Inter', 'sans-serif'],
       },
     },
