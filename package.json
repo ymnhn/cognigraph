@@ -17,6 +17,7 @@
     "@astrojs/tailwind": "^5.0.0",
     "@tailwindcss/typography": "^0.5.10",
     "@resvg/resvg-js": "^2.6.0",
+    "dayjs": "^1.11.10",
     "pagefind": "1.1.0",
     "slugify": "^1.6.6",
     "lodash.kebabcase": "^4.1.1",

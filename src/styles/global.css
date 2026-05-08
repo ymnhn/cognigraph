@@ -1,9 +1,7 @@
+@import "./typography.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import "./typography.css";
-
 /* 다크모드 변수 설정 */
 @layer base {
   :root,
