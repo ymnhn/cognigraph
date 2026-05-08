@@ -6,7 +6,12 @@ import LinkButton from "@/components/LinkButton.astro";
 import { SITE } from "@/config";
 ---
 
-<Layout title={`404 Not Found | ${SITE.title}`}>
+<!-- pubDatetime과 modDatetime에 명시적으로 null을 넘겨 렌더러의 혼선을 방지합니다 -->
+<Layout 
+  title={`404 Not Found | ${SITE.title}`}
+  pubDatetime={undefined}
+  modDatetime={null}
+>
   <Header />
 
   <main
