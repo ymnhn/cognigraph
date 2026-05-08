@@ -42,6 +42,8 @@ const modDate = safeISO(props?.modDatetime || props?.frontmatter?.modDatetime);
     {pubDate && <meta property="article:published_time" content={pubDate} />}
     {modDate && <meta property="article:modified_time" content={modDate} />}
 
+    <slot name="head" />
+
     <ViewTransitions />
   </head>
   <body>

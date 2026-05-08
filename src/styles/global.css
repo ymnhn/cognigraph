@@ -1,28 +1,38 @@
+@import "tailwindcss";
 @import "./typography.css";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-/* 다크모드 변수 설정 */
+
+/* Override Tailwind v4's default dark variant to use data-theme attribute */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+:root,
+html[data-theme="light"] {
+  --background: #fdfdfd;
+  --foreground: #282728;
+  --accent: #006cac;
+  --muted: #e6e6e6;
+  --border: #ece9e9;
+}
+
+html[data-theme="dark"] {
+  --background: #212737;
+  --foreground: #eaedf3;
+  --accent: #ff6b01;
+  --muted: #343f60;
+  --border: #ab4b08;
+}
+
+/* Map CSS variables to Tailwind v4 theme tokens */
+@theme inline {
+  --font-app: Inter, ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+}
+
 @layer base {
-  :root,
-  html[data-theme="light"] {
-    --background: #fdfdfd;
-    --foreground: #282728;
-    --accent: #006cac;
-    --muted: #e6e6e6;
-    --border: #ece9e9;
-  }
-
-  html[data-theme="dark"] {
-    --background: #212737;
-    --foreground: #eaedf3;
-    --accent: #ff6b01;
-    --muted: #343f60;
-    --border: #ab4b08;
-  }
-
   * {
-    /* 변수명을 tailwind.config.mjs에서 정의한 이름과 일치시킵니다 */
     @apply border-border outline-accent/75;
     scrollbar-width: auto;
     scrollbar-color: var(--muted) transparent;
@@ -31,7 +41,6 @@
     @apply overflow-y-scroll scroll-smooth;
   }
   body {
-    /* font-app은 config에서 정의했으므로 그대로 사용 가능합니다 */
     @apply flex min-h-svh flex-col bg-background font-app text-foreground selection:bg-accent/75 selection:text-background;
   }
   a,
@@ -44,15 +53,12 @@
   }
 }
 
-/* @utility 대신 @layer utilities를 사용하여 에러 해결 */
-@layer utilities {
-  .max-w-app {
-    @apply max-w-3xl;
-  }
+@utility max-w-app {
+  @apply max-w-3xl;
+}
 
-  .app-layout {
-    @apply mx-auto w-full max-w-3xl px-4;
-  }
+@utility app-layout {
+  @apply mx-auto w-full max-w-app px-4;
 }
 
 .active-nav {

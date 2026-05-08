@@ -1,23 +1,30 @@
 import { defineConfig } from "astro/config";
-import tailwind from "@astrojs/tailwind";
+import tailwindcss from "@tailwindcss/vite";
 import sitemap from "@astrojs/sitemap";
-import mdx from "@astrojs/mdx";
-import react from "@astrojs/react";
+import remarkToc from "remark-toc";
+import remarkCollapse from "remark-collapse";
 import { SITE } from "./src/config";
 
 export default defineConfig({
   site: SITE.website,
   integrations: [
-    tailwind({ applyBaseStyles: false }),
-    sitemap(),
-    mdx(),
-    react(),
+    sitemap({
+      filter: page => SITE.showArchives || !page.endsWith("/archives"),
+    }),
   ],
   markdown: {
+    remarkPlugins: [remarkToc, [remarkCollapse, { test: "Table of contents" }]],
     shikiConfig: {
-      theme: "one-dark-pro",
+      // Dual light/dark themes so --shiki-light-bg and --shiki-dark-bg variables are available
+      themes: { light: "github-light", dark: "one-dark-pro" },
+      defaultColor: false,
       wrap: true,
     },
   },
-  // env 설정 부분을 과감히 삭제하거나 주석 처리하세요.
+  vite: {
+    plugins: [tailwindcss()],
+    optimizeDeps: {
+      exclude: ["@resvg/resvg-js"],
+    },
+  },
 });

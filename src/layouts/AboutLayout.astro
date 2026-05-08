@@ -1,17 +1,19 @@
 ---
-// 모든 import를 일시적으로 주석 처리하거나 제거하세요.
-// import Header from "@/components/Header.astro"; 
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
 
 const { frontmatter } = Astro.props as any;
+
+const title = frontmatter?.title ?? "About";
+const description = frontmatter?.description ?? "";
 ---
 
-<!doctype html>
-<html>
-  <head>
-    <title>{frontmatter?.title || "About"}</title>
-  </head>
-  <body>
-    <h1>{frontmatter?.title}</h1>
+<Layout {title} {description}>
+  <Header />
+  <main id="main-content" class="app-layout prose prose-a:text-accent pb-12">
+    <h1 class="text-2xl font-semibold sm:text-3xl">{title}</h1>
     <slot />
-  </body>
-</html>
+  </main>
+  <Footer />
+</Layout>
