@@ -5,6 +5,7 @@ import remarkToc from "remark-toc";
 import remarkCollapse from "remark-collapse";
 import sitemap from "@astrojs/sitemap";
 import mdx from "@astrojs/mdx";
+import path from "path"; // 경로 설정을 위해 추가
 
 // https://astro.build/config
 export default defineConfig({
@@ -12,7 +13,6 @@ export default defineConfig({
   site: "https://ymnhn.github.io",
   
   // IMPORTANT: If your repo is named 'cognigraph', uncomment the line below.
-  // If your repo is named 'your-username.github.io', leave it commented out.
   base: "/cognigraph",
 
   integrations: [
@@ -39,6 +39,11 @@ export default defineConfig({
     },
   },
   vite: {
+    resolve: {
+      alias: {
+        "@": path.resolve("./src"), // @ 기호를 src 폴더 절대 경로로 연결
+      },
+    },
     optimizeDeps: {
       exclude: ["@resvg/resvg-js"],
     },
