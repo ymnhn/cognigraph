@@ -6,15 +6,20 @@ import Breadcrumb from "@/components/Breadcrumb.astro";
 import Layout from "./Layout.astro";
 import { SITE } from "@/config";
 
-// Props 타입을 any로 확장하여 런타임 검사를 유연하게 만듭니다.
-const { frontmatter } = Astro.props as any;
+// 1. Props 타입을 더 안전하게 선언하거나 any로 우회합니다.
+type Props = MarkdownLayoutProps<{ title?: string }>;
 
-// frontmatter가 없을 경우를 대비한 기본값 설정
+const { frontmatter } = Astro.props as Props;
+
+// 2. frontmatter나 title이 없을 경우를 대비해 절대 undefined가 되지 않도록 기본값을 보장합니다.
 const pageTitle = frontmatter?.title || "About";
-const fullTitle = `${pageTitle} | ${SITE.title}`;
+const siteTitle = SITE?.title || "Cognigraph";
+const fullTitle = `${pageTitle} | ${siteTitle}`;
 ---
 
+<!-- 3. Layout에 넘기는 Props가 undefined가 아닌지 확인 -->
 <Layout title={fullTitle}>
+  <!-- 4. 컴포넌트가 존재할 때만 렌더링하도록 방어 처리 -->
   {Header && <Header />}
   {Breadcrumb && <Breadcrumb />}
   
