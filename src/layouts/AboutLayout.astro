@@ -1,30 +1,17 @@
 ---
-import Header from "@/components/Header.astro";
-import Footer from "@/components/Footer.astro";
-import Layout from "./Layout.astro";
-import { SITE } from "@/config";
+// 모든 import를 일시적으로 주석 처리하거나 제거하세요.
+// import Header from "@/components/Header.astro"; 
 
-// 1. Astro.props를 통째로 any로 처리하여 엔진의 사전 검사(Validation)를 무력화합니다.
-const props = Astro.props as any;
-const { frontmatter } = props;
-
-// 2. 제목이 없을 경우를 대비해 절대 undefined가 되지 않도록 보장합니다.
-const pageTitle = frontmatter?.title || "About";
-const siteTitle = SITE?.title || "Cognigraph";
-const fullTitle = `${pageTitle} | ${siteTitle}`;
+const { frontmatter } = Astro.props as any;
 ---
 
-<!-- 3. Layout 컴포넌트에 넘기는 title이 확실한 문자열인지 확인합니다. -->
-<Layout title={fullTitle}>
-  <!-- 4. 컴포넌트 렌더링 전 존재 여부를 반드시 체크합니다. -->
-  {Header && <Header />}
-  
-  <main id="main-content" class="app-layout">
-    <section id="about" class="app-prose mb-28 max-w-app prose-img:border-0">
-      <h1 class="text-2xl tracking-wider sm:text-3xl">{pageTitle}</h1>
-      <slot />
-    </section>
-  </main>
-
-  {Footer && <Footer />}
-</Layout>
+<!doctype html>
+<html>
+  <head>
+    <title>{frontmatter?.title || "About"}</title>
+  </head>
+  <body>
+    <h1>{frontmatter?.title}</h1>
+    <slot />
+  </body>
+</html>
