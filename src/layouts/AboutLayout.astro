@@ -6,19 +6,24 @@ import Breadcrumb from "@/components/Breadcrumb.astro";
 import Layout from "./Layout.astro";
 import { SITE } from "@/config";
 
-type Props = MarkdownLayoutProps<{ title: string }>;
+// Props 타입을 any로 확장하여 런타임 검사를 유연하게 만듭니다.
+const { frontmatter } = Astro.props as any;
 
-const { frontmatter } = Astro.props;
+// frontmatter가 없을 경우를 대비한 기본값 설정
+const pageTitle = frontmatter?.title || "About";
+const fullTitle = `${pageTitle} | ${SITE.title}`;
 ---
 
-<Layout title={`${frontmatter.title} | ${SITE.title}`}>
-  <Header />
-  <Breadcrumb />
+<Layout title={fullTitle}>
+  {Header && <Header />}
+  {Breadcrumb && <Breadcrumb />}
+  
   <main id="main-content" class="app-layout">
     <section id="about" class="app-prose mb-28 max-w-app prose-img:border-0">
-      <h1 class="text-2xl tracking-wider sm:text-3xl">{frontmatter.title}</h1>
+      <h1 class="text-2xl tracking-wider sm:text-3xl">{pageTitle}</h1>
       <slot />
     </section>
   </main>
-  <Footer />
+
+  {Footer && <Footer />}
 </Layout>
