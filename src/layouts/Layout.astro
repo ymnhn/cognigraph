@@ -3,7 +3,7 @@ import { ViewTransitions } from "astro:transitions";
 import { SITE } from "@/config";
 import "@/styles/global.css";
 
-// 환경 변수 선언 (ReferenceError 방지)
+// 환경 변수 선언
 const PUBLIC_GOOGLE_SITE_VERIFICATION = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION;
 
 type Props = {
@@ -17,9 +17,6 @@ type Props = {
   modDatetime?: Date | null;
   scrollSmooth?: boolean;
 };
-
----
-// ... (상단 import 및 Props 선언 생략)
 
 const {
   title = SITE.title,
@@ -35,27 +32,26 @@ const {
 
 const socialImageURL = new URL(ogImage, Astro.url);
 
-// 1. 기본 객체를 먼저 만듭니다.
+// 구조화 데이터 생성 (에러 방지를 위한 안전한 로직)
 const structuredData: any = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
-  headline: `${title}`,
-  image: `${socialImageURL}`,
+  headline: title,
+  image: socialImageURL.href,
   author: [
     {
       "@type": "Person",
-      name: `${author}`,
+      name: author,
       ...(profile && { url: profile }),
     },
   ],
 };
 
-// 2. 날짜가 실제 Date 객체일 때만 문자열로 변환하여 추가합니다.
-if (pubDatetime && pubDatetime instanceof Date && !isNaN(pubDatetime.getTime())) {
+if (pubDatetime && pubDatetime instanceof Date) {
   structuredData.datePublished = pubDatetime.toISOString();
 }
 
-if (modDatetime && modDatetime instanceof Date && !isNaN(modDatetime.getTime())) {
+if (modDatetime && modDatetime instanceof Date) {
   structuredData.dateModified = modDatetime.toISOString();
 }
 ---
