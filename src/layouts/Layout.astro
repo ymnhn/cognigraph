@@ -1,14 +1,16 @@
-// Props를 구조분해 할당하기 직전에 실행
+---
+// 1. Import 문은 반드시 최상단에 위치해야 합니다.
+import { ViewTransitions } from "astro:transitions";
+import { SITE } from "@/config";
+import "@/styles/global.css";
+
+// 2. Props 필터링 로직 (Props 구조 분해 이전에 실행)
 const props = Astro.props;
 Object.keys(props).forEach(key => {
   if (props[key] === undefined) {
     delete props[key];
   }
 });
----
-import { ViewTransitions } from "astro:transitions";
-import { SITE } from "@/config";
-import "@/styles/global.css";
 
 const PUBLIC_GOOGLE_SITE_VERIFICATION = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION;
 
@@ -19,7 +21,7 @@ type Props = {
   description?: string;
   ogImage?: string;
   canonicalURL?: string;
-  pubDatetime?: Date | string; // 타입을 string까지 허용하도록 확장
+  pubDatetime?: Date | string;
   modDatetime?: Date | string | null;
   scrollSmooth?: boolean;
 };
@@ -31,14 +33,13 @@ const {
   description = SITE.desc,
   ogImage = SITE.ogImage ? `/${SITE.ogImage}` : "/og.png",
   canonicalURL = new URL(Astro.url.pathname, Astro.url),
-  pubDatetime = "", // undefined 대신 빈 문자열 할당
-  modDatetime = "", // undefined 대신 빈 문자열 할당
+  pubDatetime = "",
+  modDatetime = "",
   scrollSmooth = false,
-} = Astro.props;
+} = props; // Astro.props 대신 위에서 필터링한 props 변수 사용
 
 const socialImageURL = new URL(ogImage, Astro.url);
 
-// 날짜 변환 로직 - Date 객체인 경우에만 toISOString 실행
 const datePublishedStr = pubDatetime instanceof Date ? pubDatetime.toISOString() : "";
 const dateModifiedStr = modDatetime instanceof Date ? modDatetime.toISOString() : "";
 
@@ -84,7 +85,6 @@ if (dateModifiedStr) structuredData.dateModified = dateModifiedStr;
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:image" content={socialImageURL} />
 
-    {/* 빈 문자열이 아닌 경우에만 메타 태그 렌더링 */}
     {datePublishedStr && (
       <meta property="article:published_time" content={datePublishedStr} />
     )}
