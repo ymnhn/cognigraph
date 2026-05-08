@@ -1,30 +1,16 @@
 ---
-// 1. Import 문은 반드시 최상단에 위치해야 합니다.
 import { ViewTransitions } from "astro:transitions";
 import { SITE } from "@/config";
 import "@/styles/global.css";
 
-// 2. Props 필터링 로직 (Props 구조 분해 이전에 실행)
-const props = Astro.props;
-Object.keys(props).forEach(key => {
-  if (props[key] === undefined) {
-    delete props[key];
+// 1. Props 필터링: undefined인 속성은 아예 제거하여 렌더러 접근 차단
+const rawProps = Astro.props as any;
+const cleanProps: any = {};
+Object.keys(rawProps).forEach(key => {
+  if (rawProps[key] !== undefined && rawProps[key] !== null) {
+    cleanProps[key] = rawProps[key];
   }
 });
-
-const PUBLIC_GOOGLE_SITE_VERIFICATION = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION;
-
-type Props = {
-  title?: string;
-  author?: string;
-  profile?: string;
-  description?: string;
-  ogImage?: string;
-  canonicalURL?: string;
-  pubDatetime?: Date | string;
-  modDatetime?: Date | string | null;
-  scrollSmooth?: boolean;
-};
 
 const {
   title = SITE.title,
@@ -33,16 +19,26 @@ const {
   description = SITE.desc,
   ogImage = SITE.ogImage ? `/${SITE.ogImage}` : "/og.png",
   canonicalURL = new URL(Astro.url.pathname, Astro.url),
-  pubDatetime = "",
-  modDatetime = "",
+  pubDatetime,
+  modDatetime,
   scrollSmooth = false,
-} = props; // Astro.props 대신 위에서 필터링한 props 변수 사용
+} = cleanProps;
 
+const PUBLIC_GOOGLE_SITE_VERIFICATION = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION;
 const socialImageURL = new URL(ogImage, Astro.url);
 
-const datePublishedStr = pubDatetime instanceof Date ? pubDatetime.toISOString() : "";
-const dateModifiedStr = modDatetime instanceof Date ? modDatetime.toISOString() : "";
+// 2. 날짜 처리: .toISOString() 호출 전 철저한 타입 검사
+const getIsoDate = (d: any) => {
+  if (d instanceof Date && !isNaN(d.getTime())) {
+    return d.toISOString();
+  }
+  return null;
+};
 
+const datePublishedStr = getIsoDate(pubDatetime);
+const dateModifiedStr = getIsoDate(modDatetime);
+
+// 3. 구조화 데이터 구성
 const structuredData: any = {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
