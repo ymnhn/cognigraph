@@ -9,7 +9,9 @@ from sentence_transformers import SentenceTransformer, util
 
 # --- CONFIGURATION ---
 SEARCH_QUERY = 'all:"cognitive science" OR all:"neural manifolds" OR all:"active inference"'
-MAX_RESULTS = 15
+TARGET_SAVED_COUNT = 15  # Target number of papers to successfully collect
+BATCH_SIZE = 50          # How many papers to fetch per API request
+MAX_PAGES = 10           # Max API requests to prevent infinite loops if threshold is too strict
 THRESHOLD = 0.25
 MODEL_NAME = "all-MiniLM-L6-v2"
 
@@ -22,18 +24,18 @@ TARGET_CONCEPT = (
 )
 
 
-def fetch_arxiv_papers():
-    """Fetch papers from arXiv with proper URL encoding and retry logic."""
+def fetch_arxiv_papers(start=0, max_results=50):
+    """Fetch papers from arXiv with proper URL encoding, pagination, and retry logic."""
     base_url = "http://export.arxiv.org/api/query?"
     params = {
         "search_query": SEARCH_QUERY,
-        "start": 0,
-        "max_results": MAX_RESULTS,
+        "start": start,
+        "max_results": max_results,
         "sortBy": "submittedDate",
         "sortOrder": "descending",
     }
     url = base_url + urllib.parse.urlencode(params)
-    print(f"Fetching papers from arXiv...")
+    print(f"Fetching {max_results} papers from arXiv (start={start})...")
 
     for attempt in range(3):
         try:
@@ -74,56 +76,69 @@ def main():
     model = SentenceTransformer(MODEL_NAME)
     target_embedding = model.encode(TARGET_CONCEPT, convert_to_tensor=True)
 
-    try:
-        xml_data = fetch_arxiv_papers()
-        feed = feedparser.parse(xml_data)
-    except Exception as e:
-        print(f"Error fetching data: {e}")
-        return
-
-    entries = feed.get("entries", [])
-    print(f"Received {len(entries)} entries from arXiv.")
-
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     count = 0
-    for entry in entries:
-        title = entry.get("title", "").strip().replace("\n", " ")
-        summary = entry.get("summary", "").strip().replace("\n", " ")
-        link = entry.get("link", "")
-        published = entry.get("published", "")
+    start_idx = 0
+    pages_fetched = 0
 
-        if not title or not published:
-            continue
-
-        # Semantic scoring
-        text_to_score = f"{title}. {summary}"
-        entry_embedding = model.encode(text_to_score, convert_to_tensor=True)
-        score = util.pytorch_cos_sim(target_embedding, entry_embedding).item()
-
-        if score < THRESHOLD:
-            continue
-
-        slug = sanitize_filename(title)
-        if not slug:
-            continue
-
-        filepath = os.path.join(OUTPUT_DIR, f"{slug}.md")
-        if os.path.exists(filepath):
-            print(f"Skipping (already exists): {title}")
-            continue
-
+    # Keep fetching until we hit our target collected count or reach max retries
+    while count < TARGET_SAVED_COUNT and pages_fetched < MAX_PAGES:
         try:
-            pub_date = format_astro_date(published)
-        except ValueError:
-            print(f"Skipping (bad date '{published}'): {title}")
-            continue
+            xml_data = fetch_arxiv_papers(start=start_idx, max_results=BATCH_SIZE)
+            feed = feedparser.parse(xml_data)
+        except Exception as e:
+            print(f"Error fetching data: {e}")
+            break
 
-        # Description uses only Zod-schema-compliant fields
-        description = f"[arXiv]({link}) — relevance score: {score:.2f}"
-        body_summary = summary[:2000] + ("..." if len(summary) > 2000 else "")
+        entries = feed.get("entries", [])
+        print(f"Received {len(entries)} entries from arXiv in this batch.")
 
-        content = f"""---
+        # If arXiv returns no more entries, we've exhausted the search results
+        if not entries:
+            print("No more entries found on arXiv.")
+            break
+
+        for entry in entries:
+            if count >= TARGET_SAVED_COUNT:
+                break
+
+            title = entry.get("title", "").strip().replace("\n", " ")
+            summary = entry.get("summary", "").strip().replace("\n", " ")
+            link = entry.get("link", "")
+            published = entry.get("published", "")
+
+            if not title or not published:
+                continue
+
+            # Semantic scoring
+            text_to_score = f"{title}. {summary}"
+            entry_embedding = model.encode(text_to_score, convert_to_tensor=True)
+            score = util.pytorch_cos_sim(target_embedding, entry_embedding).item()
+
+            if score < THRESHOLD:
+                continue
+
+            slug = sanitize_filename(title)
+            if not slug:
+                continue
+
+            filepath = os.path.join(OUTPUT_DIR, f"{slug}.md")
+            if os.path.exists(filepath):
+                print(f"Skipping (already exists): {title}")
+                continue
+
+            try:
+                pub_date = format_astro_date(published)
+            except ValueError:
+                print(f"Skipping (bad date '{published}'): {title}")
+                continue
+
+            # Description uses only Zod-schema-compliant fields
+            description = f"[arXiv]({link}) — relevance score: {score:.2f}"
+            body_summary = summary[:2000] + ("..." if len(summary) > 2000 else "")
+
+            content = f"""---
 author: "CogniGraph Bot"
 pubDatetime: {pub_date}
 title: "{escape_yaml(title)}"
@@ -142,11 +157,19 @@ description: "{escape_yaml(description)}"
 *Automatically curated based on semantic similarity to core Cognitive Science themes.*
 *Relevance score: {score:.4f}*
 """
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(content)
 
-        print(f"Saved [{score:.2f}]: {title}")
-        count += 1
+            print(f"Saved [{score:.2f}]: {title}")
+            count += 1
+
+        # Advance pagination pointer and page counter
+        start_idx += BATCH_SIZE
+        pages_fetched += 1
+
+        # Be nice to arXiv API before making the next paginated request
+        if count < TARGET_SAVED_COUNT and pages_fetched < MAX_PAGES:
+            time.sleep(3)
 
     print(f"\nPipeline complete. {count} new paper(s) saved to {OUTPUT_DIR}/")
 
