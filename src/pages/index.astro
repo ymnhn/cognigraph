@@ -13,6 +13,9 @@ const posts      = await getCollection("blog");
 const sorted     = getSortedPosts(posts);
 const recent     = sorted.slice(0, SITE.postPerIndex);
 const hasMore    = sorted.length > SITE.postPerIndex;
+// BASE_URL is "/cognigraph" (no trailing slash) when base has no trailing slash,
+// so normalize it to always end with "/" before concatenating paths.
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 ---
 
 <Layout title={SITE.title} description={SITE.desc}>
@@ -25,7 +28,7 @@ const hasMore    = sorted.length > SITE.postPerIndex;
     {
       hasMore && (
         <div class="mt-4 text-center">
-          <LinkButton href={`${import.meta.env.BASE_URL}posts/`}>
+          <LinkButton href={`${base}posts/`}>
             All papers
             <IconArrowRight class="inline-block rtl:-rotate-180" />
           </LinkButton>
