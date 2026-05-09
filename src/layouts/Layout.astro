@@ -62,5 +62,8 @@ const modDate = safeISO(props?.modDatetime || props?.frontmatter?.modDatetime);
   </head>
   <body>
     <slot />
+    <!-- theme.ts attaches the click handler to #theme-btn and syncs with system changes.
+         Must be loaded as a module after the body so the button exists in the DOM. -->
+    <script src="@/scripts/theme.ts"></script>
   </body>
 </html>

@@ -1,33 +1,37 @@
 ---
 import type { CollectionEntry } from "astro:content";
-import { slugifyStr } from "@/utils/slugify";
-import { getPath } from "@/utils/getPath";
 import Datetime from "./Datetime.astro";
 
 type Props = {
   variant?: "h2" | "h3";
 } & CollectionEntry<"blog">;
 
-const { variant: Heading = "h2", id, data, filePath } = Astro.props;
+const { variant: Heading = "h2", data } = Astro.props;
+const { title, description, koreanSummary, ...props } = data;
 
-const { title, description, ...props } = data;
+// description is "[arXiv](https://arxiv.org/abs/...) — relevance score: 0.31"
+// Extract the arXiv URL so the title links directly to the paper.
+const arXivMatch = description?.match(/\[arXiv\]\((https?:\/\/[^)]+)\)/);
+const arXivUrl = arXivMatch?.[1] ?? "#";
 ---
 
 <li class="my-6">
   <a
-    href={getPath(id, filePath)}
+    href={arXivUrl}
+    target="_blank"
+    rel="noopener noreferrer"
     class:list={[
       "inline-block text-lg font-medium text-accent",
       "decoration-dashed underline-offset-4 hover:underline",
       "focus-visible:no-underline focus-visible:underline-offset-0",
     ]}
   >
-    <Heading
-      style={{ viewTransitionName: slugifyStr(title.replaceAll(".", "-")) }}
-    >
-      {title}
-    </Heading>
+    <Heading>{title}</Heading>
   </a>
   <Datetime {...props} />
-  <p>{description}</p>
+  {
+    koreanSummary && (
+      <p class="mt-1 text-sm leading-relaxed opacity-80">{koreanSummary}</p>
+    )
+  }
 </li>
