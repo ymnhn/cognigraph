@@ -4,7 +4,7 @@ pubDatetime: 2026-04-23T10:01:03.000Z
 title: "Analyzing directional errors in spatial orientation using nonparametric circular regression with mixed covariates"
 featured: false
 draft: false
-tags: ["research", "cognitive-science"]
+tags: ["cognitive-science"]
 description: "[arXiv](https://arxiv.org/abs/2604.21498v1) — relevance score: 0.27"
 ---
 
