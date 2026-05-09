@@ -1,7 +1,5 @@
 ---
 import type { CollectionEntry } from "astro:content";
-import { slugifyStr } from "@/utils/slugify";
-import IconHash from "@/assets/icons/IconHash.svg";
 import Datetime from "./Datetime.astro";
 
 type Props = {
@@ -9,54 +7,26 @@ type Props = {
 } & CollectionEntry<"blog">;
 
 const { variant: Heading = "h2", data } = Astro.props;
-const { title, description, koreanSummary, tags, ...props } = data;
+const { title, description, koreanSummary, ...props } = data;
 
-// description format: "[arXiv](https://arxiv.org/abs/...) — relevance score: 0.31"
+// Extract arXiv URL from description: "[arXiv](https://arxiv.org/abs/...) — ..."
 const arXivMatch = description?.match(/\[arXiv\]\((https?:\/\/[^)]+)\)/);
 const arXivUrl   = arXivMatch?.[1] ?? "#";
 ---
 
 <li class="my-6 border-b border-border pb-6 last:border-0">
-  <!-- Title → links to the arXiv paper -->
   <a
     href={arXivUrl}
     target="_blank"
     rel="noopener noreferrer"
-    class:list={[
-      "group inline-block font-medium text-accent",
-      "decoration-dashed underline-offset-4 hover:underline",
-      "focus-visible:no-underline",
-    ]}
+    class="inline-block font-medium text-accent decoration-dashed underline-offset-4 hover:underline focus-visible:no-underline"
   >
     <Heading class="text-base sm:text-lg leading-snug">{title}</Heading>
   </a>
 
-  <!-- Date -->
   <Datetime {...props} class="mt-1" />
 
-  <!-- Korean summary -->
-  {
-    koreanSummary && (
-      <p class="mt-2 text-sm leading-relaxed opacity-75">{koreanSummary}</p>
-    )
-  }
-
-  <!-- Tags -->
-  {
-    tags && tags.length > 0 && (
-      <ul class="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-        {tags.map(tag => (
-          <li>
-            <a
-              href={`/tags/${slugifyStr(tag)}/`}
-              class="inline-flex items-center gap-0.5 text-xs opacity-70 hover:opacity-100 hover:text-accent transition-opacity"
-            >
-              <IconHash class="size-3" />
-              {tag}
-            </a>
-          </li>
-        ))}
-      </ul>
-    )
-  }
+  {koreanSummary && (
+    <p class="mt-2 text-sm leading-relaxed opacity-75">{koreanSummary}</p>
+  )}
 </li>

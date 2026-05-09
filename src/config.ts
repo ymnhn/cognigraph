@@ -11,9 +11,9 @@ export const SITE = {
   title: "CogniGraph",
   
   ogImage: "astropaper-og.jpg",
-  lightAndDarkMode: true,
-  postPerIndex: 4,
-  postPerPage: 4,
+  lightAndDarkMode: false,
+  postPerIndex: 10,
+  postPerPage: 10,
   scheduledPostMargin: 15 * 60 * 1000,
   showArchives: true,
   showBackButton: true,

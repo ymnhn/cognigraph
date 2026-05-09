@@ -16,9 +16,9 @@ SEARCH_QUERY = (
 )
 FETCH_POOL_SIZE   = 50   # papers pulled from arXiv per run
 TARGET_SAVED      = 15   # max new papers saved per run
-BACKFILL_PER_RUN  = 5    # existing posts to backfill per run (keeps CI fast)
+BACKFILL_PER_RUN  = 10   # existing posts to backfill per run
 MODEL_NAME        = "all-MiniLM-L6-v2"
-OUTPUT_DIR        = "src/data/blog"   # must match BLOG_PATH in content.config.ts
+OUTPUT_DIR        = "src/data/blog"
 
 TARGET_CONCEPT = (
     "Cognitive science research involving neural representations, "
@@ -31,7 +31,6 @@ GEMINI_ENABLED = bool(GEMINI_API_KEY)
 # ── Gemini ────────────────────────────────────────────────────────────────────
 
 def _gemini_post(payload: dict) -> dict:
-    """Raw POST to Gemini 1.5-flash. Returns parsed JSON response."""
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"gemini-2.0-flash-lite:generateContent?key={GEMINI_API_KEY}"
@@ -42,54 +41,81 @@ def _gemini_post(payload: dict) -> dict:
     )
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(req, timeout=25) as resp:
+            with urllib.request.urlopen(req, timeout=60) as resp:
                 return json.loads(resp.read())
         except Exception as e:
-            print(f"    [Gemini] attempt {attempt + 1} failed: {e}")
-            time.sleep(5 * (attempt + 1))
+            print(f"  [Gemini] attempt {attempt + 1} failed: {e}")
+            time.sleep(10 * (attempt + 1))
     return {}
 
-def generate_metadata(title: str, abstract: str) -> dict:
-    """
-    Single Gemini call that returns BOTH tags and Korean summary.
-    Calling once per paper (not twice) halves API usage.
-    """
-    if not GEMINI_ENABLED:
-        return {"tags": ["cognitive-science"], "korean_summary": ""}
 
-    prompt = (
-        "다음 논문을 분석하여 아래 JSON만 반환하세요. 다른 텍스트는 절대 포함하지 마세요.\n\n"
-        f"제목: {title}\n"
-        f"초록: {abstract[:1500]}\n\n"
-        "{\n"
-        '  "tags": ["소문자 영어 태그 3~5개"],\n'
-        '  "korean_summary": "핵심 내용을 한국어로 2~3문장 요약"\n'
-        "}"
+def generate_metadata_batch(papers: list[dict]) -> list[dict]:
+    """
+    ONE Gemini call for all papers at once.
+    The free tier allows 15 requests/minute — calling once per paper (15 calls)
+    exhausts the quota immediately and all fail with 429.
+    One batched call uses 1 quota unit regardless of paper count.
+
+    papers: list of {"title": str, "abstract": str}
+    returns: list of {"tags": [...], "korean_summary": str} in same order
+    """
+    fallback = [{"tags": ["cognitive-science"], "korean_summary": ""} for _ in papers]
+    if not GEMINI_ENABLED:
+        print("  [Gemini] GEMINI_API_KEY not set — skipping metadata.")
+        return fallback
+
+    numbered = "\n\n".join(
+        f"[{i+1}] 제목: {p['title']}\n초록: {p['abstract'][:800]}"
+        for i, p in enumerate(papers)
     )
+    prompt = (
+        f"다음 {len(papers)}편의 논문을 분석하여 JSON 배열만 반환하세요. "
+        "마크다운 코드블록이나 다른 텍스트는 절대 포함하지 마세요. "
+        "배열 순서는 논문 번호 순서와 동일해야 합니다.\n\n"
+        f"{numbered}\n\n"
+        "반환 형식:\n"
+        "[\n"
+        '  {"tags": ["영어소문자태그1", "태그2", "태그3"], "korean_summary": "2~3문장 한국어 요약"},\n'
+        "  ...\n"
+        "]"
+    )
+
+    print(f"  [Gemini] batch request for {len(papers)} papers...")
     result = _gemini_post({
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 300, "temperature": 0.2},
+        "generationConfig": {"maxOutputTokens": 4096, "temperature": 0.2},
     })
 
+    raw = ""
     try:
-        raw = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+        raw = (
+            result.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [{}])[0]
+            .get("text", "")
+            .strip()
+        )
         if not raw:
-            print("    [Gemini] empty response")
-            return {"tags": ["cognitive-science"], "korean_summary": ""}
-        # Strip markdown code fences if model wraps the JSON
+            print("  [Gemini] empty response")
+            return fallback
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
         parsed = json.loads(raw)
-        tags = [str(t).lower().replace(" ", "-") for t in parsed.get("tags", [])][:5]
-        summary = str(parsed.get("korean_summary", "")).strip()
-        return {"tags": tags or ["cognitive-science"], "korean_summary": summary}
+        results = []
+        for item in parsed:
+            tags = [str(t).lower().replace(" ", "-") for t in item.get("tags", [])][:5]
+            summary = str(item.get("korean_summary", "")).strip()
+            results.append({"tags": tags or ["cognitive-science"], "korean_summary": summary})
+        while len(results) < len(papers):
+            results.append({"tags": ["cognitive-science"], "korean_summary": ""})
+        print(f"  [Gemini] batch complete: {len(results)} papers processed")
+        return results
     except Exception as e:
-        print(f"    [Gemini] parse error: {e}  raw={raw[:120]!r}")
-        return {"tags": ["cognitive-science"], "korean_summary": ""}
+        print(f"  [Gemini] parse error: {e}  raw={raw[:200]!r}")
+        return fallback
 
 # ── arXiv ─────────────────────────────────────────────────────────────────────
 
 def fetch_arxiv(max_results: int = 50) -> list[dict]:
-    """Fetch papers from arXiv and return a flat list of dicts."""
     params = {
         "search_query": SEARCH_QUERY,
         "start": 0,
@@ -146,18 +172,17 @@ def tags_yaml(tags: list[str]) -> str:
 
 # ── Backfill ──────────────────────────────────────────────────────────────────
 
-def backfill(model, target_emb):
+def backfill():
     """
-    Add koreanSummary + dynamic tags to existing posts that still have the
-    old hardcoded tags or no Korean summary.
-    Capped at BACKFILL_PER_RUN per CI run to keep runtime short.
+    Add koreanSummary + dynamic tags to existing posts in one batch Gemini call.
+    Capped at BACKFILL_PER_RUN posts per CI run.
     """
     if not GEMINI_ENABLED:
         print("Backfill skipped — GEMINI_API_KEY not set.")
         return
 
     candidates = []
-    for fname in os.listdir(OUTPUT_DIR):
+    for fname in sorted(os.listdir(OUTPUT_DIR)):
         if not fname.endswith(".md"):
             continue
         fpath = os.path.join(OUTPUT_DIR, fname)
@@ -169,41 +194,33 @@ def backfill(model, target_emb):
         )
         if needs_work:
             candidates.append((fpath, content))
+        if len(candidates) >= BACKFILL_PER_RUN:
+            break
 
     if not candidates:
         print("Backfill: all posts are up to date.")
         return
 
-    print(f"Backfill: {len(candidates)} post(s) need updating, "
-          f"processing up to {BACKFILL_PER_RUN} this run...")
+    print(f"Backfill: processing {len(candidates)} post(s) in one batch call...")
 
-    done = 0
+    papers = []
     for fpath, content in candidates:
-        if done >= BACKFILL_PER_RUN:
-            break
-
         tm = re.search(r'^title:\s*"(.+)"', content, re.MULTILINE)
         am = re.search(r"## Abstract\s*\n\n(.+?)(?:\n\n---|\Z)", content, re.DOTALL)
-        if not tm or not am:
-            continue
+        title    = tm.group(1).replace('\\"', '"') if tm else ""
+        abstract = am.group(1).strip() if am else ""
+        papers.append({"title": title, "abstract": abstract})
 
-        title    = tm.group(1).replace('\\"', '"')
-        abstract = am.group(1).strip()
+    meta_list = generate_metadata_batch(papers)
 
-        print(f"  Backfilling: {title[:60]}...")
-        meta = generate_metadata(title, abstract)
-        summary = meta["korean_summary"]
+    done = 0
+    for (fpath, content), meta in zip(candidates, meta_list):
+        summary  = meta["korean_summary"]
         new_tags = tags_yaml(meta["tags"])
 
-        # Replace hardcoded tags line
         updated = re.sub(
-            r'^tags:\s*\[.*?\]',
-            f'tags: {new_tags}',
-            content,
-            flags=re.MULTILINE,
+            r'^tags:\s*\[.*?\]', f'tags: {new_tags}', content, flags=re.MULTILINE
         )
-
-        # Inject koreanSummary if missing
         if "koreanSummary:" not in updated and summary:
             updated = updated.replace(
                 "\n---\n\n## Abstract",
@@ -221,14 +238,13 @@ def backfill(model, target_emb):
         with open(fpath, "w", encoding="utf-8") as f:
             f.write(updated)
         done += 1
-        time.sleep(2)
 
     print(f"Backfill complete: {done} post(s) updated.")
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    # ── Phase 1: Load model + fetch ──────────────────────────────────────────
+    # Phase 1: Load model + fetch
     print(f"Loading semantic model '{MODEL_NAME}'...")
     model = SentenceTransformer(MODEL_NAME)
     target_emb = model.encode(TARGET_CONCEPT, convert_to_tensor=True)
@@ -238,22 +254,18 @@ def main():
         print("No entries returned from arXiv.")
         return
 
-    # ── Phase 2: Batch-score ALL papers in one shot (fast) ───────────────────
-    # Encoding one at a time (50 calls) is slow; batch encodes all at once.
+    # Phase 2: Batch-score all papers in one tensor op
     print(f"Batch-scoring {len(entries)} papers...")
     texts = [f"{e['title']}. {e['summary']}" for e in entries]
-    embeddings = model.encode(
-        texts, convert_to_tensor=True, batch_size=32, show_progress_bar=False
-    )
+    embeddings = model.encode(texts, convert_to_tensor=True, batch_size=32, show_progress_bar=False)
     scores = util.pytorch_cos_sim(target_emb, embeddings)[0].tolist()
-
     for entry, score in zip(entries, scores):
         entry["score"] = score
-
-    # Sort by score descending; keep only new (not already saved) papers
     entries.sort(key=lambda x: x["score"], reverse=True)
+
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+    # Identify new winners (not yet saved)
     winners = []
     for entry in entries:
         if len(winners) >= TARGET_SAVED:
@@ -274,18 +286,22 @@ def main():
 
     print(f"Scoring done. {len(winners)} new paper(s) to save.")
 
-    # ── Phase 3: Gemini only for winners ─────────────────────────────────────
+    # Phase 3: ONE batch Gemini call for all winners
+    if winners:
+        papers_for_gemini = [
+            {"title": w["title"], "abstract": w["summary"]} for w in winners
+        ]
+        meta_list = generate_metadata_batch(papers_for_gemini)
+    else:
+        meta_list = []
+
+    # Phase 4: Write files
     saved = 0
-    for entry in winners:
+    for entry, meta in zip(winners, meta_list):
         title    = entry["title"]
-        abstract = entry["summary"]
         score    = entry["score"]
-
-        print(f"  [{score:.2f}] {title[:65]}...")
-        meta    = generate_metadata(title, abstract)
-        summary = meta["korean_summary"]
+        summary  = meta["korean_summary"]
         new_tags = tags_yaml(meta["tags"])
-
         korean_line = f'koreanSummary: "{esc(summary)}"\n' if summary else ""
 
         content = (
@@ -300,21 +316,21 @@ def main():
             f'{korean_line}'
             f'---\n\n'
             f'## Abstract\n\n'
-            f'{abstract[:2000]}\n\n'
+            f'{entry["summary"][:2000]}\n\n'
             f'---\n\n'
             f'*Relevance score: {score:.4f}*\n'
         )
 
         with open(entry["fpath"], "w", encoding="utf-8") as f:
             f.write(content)
+        print(f"  Saved [{score:.2f}]: {title[:65]}")
         saved += 1
-        time.sleep(1)  # gentle rate-limit
 
     print(f"\nFetch complete. {saved} new paper(s) saved.")
 
-    # ── Phase 4: Backfill existing posts (capped) ────────────────────────────
+    # Phase 5: Backfill old posts (one batch call, capped)
     print("\nChecking existing posts for backfill...")
-    backfill(model, target_emb)
+    backfill()
 
 
 if __name__ == "__main__":
