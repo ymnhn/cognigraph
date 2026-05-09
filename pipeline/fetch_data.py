@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer, util
 SEARCH_QUERY = 'all:"cognitive science" OR all:"neural manifolds" OR all:"active inference"'
 TARGET_SAVED_COUNT = 15  # Target number of papers to successfully collect
 BATCH_SIZE = 50          # How many papers to fetch per API request
-MAX_PAGES = 10           # Max API requests to prevent infinite loops if threshold is too strict
+MAX_PAGES = 1000           # Max API requests to prevent infinite loops if threshold is too strict
 THRESHOLD = 0.25
 MODEL_NAME = "all-MiniLM-L6-v2"
 
