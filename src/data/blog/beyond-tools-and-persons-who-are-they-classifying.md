@@ -4,7 +4,7 @@ pubDatetime: 2026-04-07T08:08:43.000Z
 title: "Beyond Tools and Persons: Who Are They? Classifying Robots and AI Agents for Proportional Governance"
 featured: false
 draft: false
-tags: ["research", "cognitive-science"]
+tags: ["cognitive-science"]
 description: "[arXiv](https://arxiv.org/abs/2604.05568v1) — relevance score: 0.31"
 ---
 
