@@ -5,14 +5,12 @@ on:
     - cron: '0 2 * * *' # 매일 새벽 2시에 실행
   workflow_dispatch:   # 수동 실행 허용
 
-# Node.js 20 지원 중단 대비 및 최신 환경 설정
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    # 레포지토리에 쓰기 권한 부여 (자동 커밋을 위해 필수)
     permissions:
       contents: write
       
@@ -46,17 +44,17 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          # 2. .md 파일 존재 여부 확인 (Error 128 방지)
-          if ls src/content/blog/*.md 1> /dev/null 2>&1; then
-            git add src/content/blog/*.md
+          # 2. src/data/blog 경로에서 .md 파일 존재 여부 확인
+          if ls src/data/blog/*.md 1> /dev/null 2>&1; then
+            git add src/data/blog/*.md
             
-            # 3. 실제 변경 사항이 있는지 확인 (Nothing to commit 방지)
+            # 3. 실제 변경 사항이 있는지 확인
             if ! git diff --cached --quiet; then
-              git commit -m "chore: auto-curate new research [skip ci]"
+              git commit -m "chore: auto-curate new research to data/blog [skip ci]"
               git push
             else
-              echo "오늘 수집된 논문 중 임계값을 넘은 새로운 데이터가 없습니다."
+              echo "오늘 수집된 논문 중 새로 추가된 데이터가 없습니다."
             fi
           else
-            echo "수집된 .md 파일이 없습니다. 커밋을 건너뜁니다."
+            echo "src/data/blog 폴더 내에 생성된 .md 파일이 없습니다."
           fi
