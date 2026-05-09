@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import time
 import urllib.request
 import urllib.parse
@@ -8,68 +9,84 @@ import feedparser
 from datetime import datetime, timezone
 from sentence_transformers import SentenceTransformer, util
 
-# ── Configuration ────────────────────────────────────────────────────────────
+# ── Configuration ─────────────────────────────────────────────────────────────
 
 SEARCH_QUERY = (
     'all:"cognitive science" OR all:"neural manifolds" OR all:"active inference"'
 )
-FETCH_POOL_SIZE = 50      # arXiv papers to pull per run
-TARGET_SAVED_COUNT = 15   # max new papers to save per run
-MODEL_NAME = "all-MiniLM-L6-v2"
-OUTPUT_DIR = "src/data/blog"  # must match BLOG_PATH in content.config.ts
+FETCH_POOL_SIZE   = 50   # papers pulled from arXiv per run
+TARGET_SAVED      = 15   # max new papers saved per run
+BACKFILL_PER_RUN  = 5    # existing posts to backfill per run (keeps CI fast)
+MODEL_NAME        = "all-MiniLM-L6-v2"
+OUTPUT_DIR        = "src/data/blog"   # must match BLOG_PATH in content.config.ts
 
 TARGET_CONCEPT = (
     "Cognitive science research involving neural representations, "
     "computational modeling, active inference, and brain functions."
 )
 
-# ── Gemini setup ─────────────────────────────────────────────────────────────
-
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_ENABLED = bool(GEMINI_API_KEY)
 
-def generate_korean_summary(title: str, abstract: str) -> str:
-    """Call Gemini Flash to produce a 2–3 sentence Korean summary."""
-    if not GEMINI_ENABLED:
-        print("  [Gemini] GEMINI_API_KEY not set — skipping Korean summary.")
-        return ""
+# ── Gemini ────────────────────────────────────────────────────────────────────
 
-    import urllib.request, json
-    prompt = (
-        "다음 논문의 제목과 초록을 읽고, 핵심 내용을 한국어로 2~3문장으로 "
-        "간결하게 요약해 주세요. 학술적이고 명확한 어조를 사용하세요.\n\n"
-        f"제목: {title}\n\n"
-        f"초록: {abstract[:1500]}\n\n"
-        "한국어 요약:"
-    )
-    payload = json.dumps({
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 256, "temperature": 0.3},
-    }).encode()
-
+def _gemini_post(payload: dict) -> dict:
+    """Raw POST to Gemini 1.5-flash. Returns parsed JSON response."""
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     )
+    body = json.dumps(payload).encode()
     req = urllib.request.Request(
-        url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
+        url, data=body, headers={"Content-Type": "application/json"}, method="POST"
     )
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                data = json.loads(resp.read())
-            return (
-                data["candidates"][0]["content"]["parts"][0]["text"].strip()
-            )
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                return json.loads(resp.read())
         except Exception as e:
-            print(f"  [Gemini] attempt {attempt+1} failed: {e}")
+            print(f"    [Gemini] attempt {attempt + 1} failed: {e}")
             time.sleep(5 * (attempt + 1))
-    return ""
+    return {}
 
-# ── arXiv helpers ─────────────────────────────────────────────────────────────
+def generate_metadata(title: str, abstract: str) -> dict:
+    """
+    Single Gemini call that returns BOTH tags and Korean summary.
+    Calling once per paper (not twice) halves API usage.
+    """
+    if not GEMINI_ENABLED:
+        return {"tags": ["cognitive-science"], "korean_summary": ""}
 
-def fetch_arxiv_papers(max_results: int = 50) -> bytes:
-    base_url = "http://export.arxiv.org/api/query?"
+    prompt = (
+        "다음 논문을 분석하여 아래 JSON만 반환하세요. 다른 텍스트는 절대 포함하지 마세요.\n\n"
+        f"제목: {title}\n"
+        f"초록: {abstract[:1500]}\n\n"
+        "{\n"
+        '  "tags": ["소문자 영어 태그 3~5개"],\n'
+        '  "korean_summary": "핵심 내용을 한국어로 2~3문장 요약"\n'
+        "}"
+    )
+    result = _gemini_post({
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"maxOutputTokens": 300, "temperature": 0.2},
+    })
+
+    try:
+        raw = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        # Strip markdown code fences if model wraps the JSON
+        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
+        parsed = json.loads(raw)
+        tags = [str(t).lower().replace(" ", "-") for t in parsed.get("tags", [])][:5]
+        summary = str(parsed.get("korean_summary", "")).strip()
+        return {"tags": tags or ["cognitive-science"], "korean_summary": summary}
+    except Exception as e:
+        print(f"    [Gemini] parse error: {e}  raw={raw[:120]!r}")
+        return {"tags": ["cognitive-science"], "korean_summary": ""}
+
+# ── arXiv ─────────────────────────────────────────────────────────────────────
+
+def fetch_arxiv(max_results: int = 50) -> list[dict]:
+    """Fetch papers from arXiv and return a flat list of dicts."""
     params = {
         "search_query": SEARCH_QUERY,
         "start": 0,
@@ -77,165 +94,206 @@ def fetch_arxiv_papers(max_results: int = 50) -> bytes:
         "sortBy": "submittedDate",
         "sortOrder": "descending",
     }
-    url = base_url + urllib.parse.urlencode(params)
-    print(f"Fetching {max_results} candidate papers from arXiv...")
+    url = "http://export.arxiv.org/api/query?" + urllib.parse.urlencode(params)
+    print(f"Fetching {max_results} papers from arXiv...")
 
     for attempt in range(3):
         try:
             response = urllib.request.urlopen(url, timeout=30)
-            return response.read()
+            feed = feedparser.parse(response.read())
+            entries = []
+            for e in feed.get("entries", []):
+                title   = e.get("title", "").strip().replace("\n", " ")
+                summary = e.get("summary", "").strip().replace("\n", " ")
+                if title and summary:
+                    entries.append({
+                        "title":     title,
+                        "summary":   summary,
+                        "link":      e.get("link", ""),
+                        "published": e.get("published", ""),
+                    })
+            return entries
         except urllib.error.HTTPError as e:
             if e.code == 429:
                 wait = 20 * (attempt + 1)
-                print(f"  Rate limited (429). Retrying in {wait}s...")
+                print(f"  Rate limited. Retrying in {wait}s...")
                 time.sleep(wait)
             else:
                 raise
     raise Exception("arXiv API unreachable after 3 attempts.")
 
-# ── Filename / YAML helpers ──────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
-def sanitize_filename(title: str, max_length: int = 50) -> str:
+def slugify(title: str, max_length: int = 50) -> str:
     clean = "".join(c if c.isalnum() or c == " " else "" for c in title).strip()
-    slug = clean.replace(" ", "-").lower()
+    slug  = clean.replace(" ", "-").lower()
     while "--" in slug:
         slug = slug.replace("--", "-")
     return slug[:max_length].rstrip("-")
 
-def format_astro_date(date_str: str) -> str:
+def astro_date(date_str: str) -> str:
     dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-def escape_yaml(s: str) -> str:
+def esc(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
-# ── Backfill: add Korean summaries to existing posts that lack them ──────────
+def tags_yaml(tags: list[str]) -> str:
+    return "[" + ", ".join(f'"{t}"' for t in tags) + "]"
 
-def backfill_korean_summaries():
-    """Scan OUTPUT_DIR for posts without koreanSummary and add them via Gemini."""
+# ── Backfill ──────────────────────────────────────────────────────────────────
+
+def backfill(model, target_emb):
+    """
+    Add koreanSummary + dynamic tags to existing posts that still have the
+    old hardcoded tags or no Korean summary.
+    Capped at BACKFILL_PER_RUN per CI run to keep runtime short.
+    """
     if not GEMINI_ENABLED:
         print("Backfill skipped — GEMINI_API_KEY not set.")
         return
 
-    md_files = [
-        os.path.join(OUTPUT_DIR, f)
-        for f in os.listdir(OUTPUT_DIR)
-        if f.endswith(".md")
-    ]
-    backfilled = 0
-    for filepath in md_files:
-        with open(filepath, "r", encoding="utf-8") as f:
+    candidates = []
+    for fname in os.listdir(OUTPUT_DIR):
+        if not fname.endswith(".md"):
+            continue
+        fpath = os.path.join(OUTPUT_DIR, fname)
+        with open(fpath, "r", encoding="utf-8") as f:
             content = f.read()
+        needs_work = (
+            "koreanSummary:" not in content
+            or 'tags: ["research", "cognitive-science"]' in content
+        )
+        if needs_work:
+            candidates.append((fpath, content))
 
-        # Skip if already has koreanSummary
-        if "koreanSummary:" in content:
+    if not candidates:
+        print("Backfill: all posts are up to date.")
+        return
+
+    print(f"Backfill: {len(candidates)} post(s) need updating, "
+          f"processing up to {BACKFILL_PER_RUN} this run...")
+
+    done = 0
+    for fpath, content in candidates:
+        if done >= BACKFILL_PER_RUN:
+            break
+
+        tm = re.search(r'^title:\s*"(.+)"', content, re.MULTILINE)
+        am = re.search(r"## Abstract\s*\n\n(.+?)(?:\n\n---|\Z)", content, re.DOTALL)
+        if not tm or not am:
             continue
 
-        # Extract title and abstract from the file
-        title_match = re.search(r'^title:\s*"(.+)"', content, re.MULTILINE)
-        abstract_match = re.search(
-            r"## Abstract\s*\n\n(.+?)(?:\n\n---|\Z)", content, re.DOTALL
+        title    = tm.group(1).replace('\\"', '"')
+        abstract = am.group(1).strip()
+
+        print(f"  Backfilling: {title[:60]}...")
+        meta = generate_metadata(title, abstract)
+        summary = meta["korean_summary"]
+        new_tags = tags_yaml(meta["tags"])
+
+        # Replace hardcoded tags line
+        updated = re.sub(
+            r'^tags:\s*\[.*?\]',
+            f'tags: {new_tags}',
+            content,
+            flags=re.MULTILINE,
         )
 
-        if not title_match or not abstract_match:
-            continue
+        # Inject koreanSummary if missing
+        if "koreanSummary:" not in updated and summary:
+            updated = updated.replace(
+                "\n---\n\n## Abstract",
+                f'\nkoreanSummary: "{esc(summary)}"\n---\n\n## Abstract',
+                1,
+            )
+        elif "koreanSummary:" in updated and summary:
+            updated = re.sub(
+                r'^koreanSummary:\s*".*"',
+                f'koreanSummary: "{esc(summary)}"',
+                updated,
+                flags=re.MULTILINE,
+            )
 
-        title = title_match.group(1).replace('\\"', '"')
-        abstract = abstract_match.group(1).strip()
-
-        print(f"  Backfilling Korean summary for: {title[:60]}...")
-        summary = generate_korean_summary(title, abstract)
-        if not summary:
-            continue
-
-        # Inject koreanSummary before the closing --- of the frontmatter
-        updated = content.replace(
-            "\n---\n\n## Abstract",
-            f'\nkoreanSummary: "{escape_yaml(summary)}"\n---\n\n## Abstract',
-            1,
-        )
-        with open(filepath, "w", encoding="utf-8") as f:
+        with open(fpath, "w", encoding="utf-8") as f:
             f.write(updated)
-        backfilled += 1
-        # Be polite to Gemini rate limits
+        done += 1
         time.sleep(2)
 
-    print(f"Backfill complete. {backfilled} post(s) updated with Korean summaries.")
+    print(f"Backfill complete: {done} post(s) updated.")
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    # 1. Load semantic model
+    # ── Phase 1: Load model + fetch ──────────────────────────────────────────
     print(f"Loading semantic model '{MODEL_NAME}'...")
     model = SentenceTransformer(MODEL_NAME)
-    target_embedding = model.encode(TARGET_CONCEPT, convert_to_tensor=True)
+    target_emb = model.encode(TARGET_CONCEPT, convert_to_tensor=True)
 
-    # 2. Fetch and score papers from arXiv
-    try:
-        xml_data = fetch_arxiv_papers(max_results=FETCH_POOL_SIZE)
-        feed = feedparser.parse(xml_data)
-    except Exception as e:
-        print(f"Error fetching data: {e}")
+    entries = fetch_arxiv(max_results=FETCH_POOL_SIZE)
+    if not entries:
+        print("No entries returned from arXiv.")
         return
 
-    entries = feed.get("entries", [])
-    print(f"Received {len(entries)} entries. Scoring...")
+    # ── Phase 2: Batch-score ALL papers in one shot (fast) ───────────────────
+    # Encoding one at a time (50 calls) is slow; batch encodes all at once.
+    print(f"Batch-scoring {len(entries)} papers...")
+    texts = [f"{e['title']}. {e['summary']}" for e in entries]
+    embeddings = model.encode(
+        texts, convert_to_tensor=True, batch_size=32, show_progress_bar=False
+    )
+    scores = util.pytorch_cos_sim(target_emb, embeddings)[0].tolist()
 
-    scored = []
-    for entry in entries:
-        title = entry.get("title", "").strip().replace("\n", " ")
-        summary = entry.get("summary", "").strip().replace("\n", " ")
-        if not title or not summary:
-            continue
-        emb = model.encode(f"{title}. {summary}", convert_to_tensor=True)
-        score = util.pytorch_cos_sim(target_embedding, emb).item()
-        scored.append({"score": score, "entry": entry, "title": title, "summary": summary})
+    for entry, score in zip(entries, scores):
+        entry["score"] = score
 
-    scored.sort(key=lambda x: x["score"], reverse=True)
+    # Sort by score descending; keep only new (not already saved) papers
+    entries.sort(key=lambda x: x["score"], reverse=True)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    # 3. Save top papers
-    saved = 0
-    for item in scored:
-        if saved >= TARGET_SAVED_COUNT:
+    winners = []
+    for entry in entries:
+        if len(winners) >= TARGET_SAVED:
             break
-
-        entry = item["entry"]
-        title = item["title"]
-        abstract = item["summary"]
-        score = item["score"]
-
-        slug = sanitize_filename(title)
+        slug = slugify(entry["title"])
         if not slug:
             continue
-
-        filepath = os.path.join(OUTPUT_DIR, f"{slug}.md")
-        if os.path.exists(filepath):
+        fpath = os.path.join(OUTPUT_DIR, f"{slug}.md")
+        if os.path.exists(fpath):
             continue
-
         try:
-            pub_date = format_astro_date(entry.get("published", ""))
+            entry["pub_date"] = astro_date(entry["published"])
         except ValueError:
             continue
+        entry["slug"]  = slug
+        entry["fpath"] = fpath
+        winners.append(entry)
 
-        link = entry.get("link", "")
+    print(f"Scoring done. {len(winners)} new paper(s) to save.")
 
-        # Generate Korean summary via Gemini
-        print(f"  [{score:.2f}] {title[:60]}...")
-        korean_summary = generate_korean_summary(title, abstract)
-        korean_line = (
-            f'koreanSummary: "{escape_yaml(korean_summary)}"\n' if korean_summary else ""
-        )
+    # ── Phase 3: Gemini only for winners ─────────────────────────────────────
+    saved = 0
+    for entry in winners:
+        title    = entry["title"]
+        abstract = entry["summary"]
+        score    = entry["score"]
+
+        print(f"  [{score:.2f}] {title[:65]}...")
+        meta    = generate_metadata(title, abstract)
+        summary = meta["korean_summary"]
+        new_tags = tags_yaml(meta["tags"])
+
+        korean_line = f'koreanSummary: "{esc(summary)}"\n' if summary else ""
 
         content = (
             f'---\n'
             f'author: "CogniGraph Bot"\n'
-            f'pubDatetime: {pub_date}\n'
-            f'title: "{escape_yaml(title)}"\n'
+            f'pubDatetime: {entry["pub_date"]}\n'
+            f'title: "{esc(title)}"\n'
             f'featured: false\n'
             f'draft: false\n'
-            f'tags: ["research", "cognitive-science"]\n'
-            f'description: "[arXiv]({link}) — relevance score: {score:.2f}"\n'
+            f'tags: {new_tags}\n'
+            f'description: "[arXiv]({entry["link"]}) — relevance score: {score:.2f}"\n'
             f'{korean_line}'
             f'---\n\n'
             f'## Abstract\n\n'
@@ -244,17 +302,16 @@ def main():
             f'*Relevance score: {score:.4f}*\n'
         )
 
-        with open(filepath, "w", encoding="utf-8") as f:
+        with open(entry["fpath"], "w", encoding="utf-8") as f:
             f.write(content)
-        print(f"  Saved: {title[:60]}")
         saved += 1
-        time.sleep(2)  # Gemini rate limit courtesy
+        time.sleep(1)  # gentle rate-limit
 
     print(f"\nFetch complete. {saved} new paper(s) saved.")
 
-    # 4. Backfill Korean summaries for existing posts that don't have one
-    print("\nChecking for existing posts without Korean summaries...")
-    backfill_korean_summaries()
+    # ── Phase 4: Backfill existing posts (capped) ────────────────────────────
+    print("\nChecking existing posts for backfill...")
+    backfill(model, target_emb)
 
 
 if __name__ == "__main__":
