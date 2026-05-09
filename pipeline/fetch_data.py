@@ -7,7 +7,7 @@ import urllib.error
 import feedparser
 from datetime import datetime, timezone
 from sentence_transformers import SentenceTransformer, util
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -26,24 +26,20 @@ TARGET_CONCEPT = (
 
 # ── Translation ───────────────────────────────────────────────────────────────
 
-def make_korean_summary(abstract: str) -> str:
+def make_korean_summary(title: str) -> str:
     """
-    Translate the first ~3 sentences of the abstract to Korean using
-    Google Translate (no API key, no rate limit quota).
+    Translate the paper title to Korean.
+    deep-translator uses requests synchronously — no API key, no quota.
     """
-    # Take first 3 sentences (up to 600 chars) as the source for summary
-    sentences = re.split(r'(?<=[.!?])\s+', abstract.strip())
-    snippet = " ".join(sentences[:3])[:600]
-
-    translator = Translator()
     for attempt in range(3):
         try:
-            result = translator.translate(snippet, src="en", dest="ko")
-            return result.text.strip()
+            result = GoogleTranslator(source="en", target="ko").translate(title)
+            if result:
+                return result.strip()
         except Exception as e:
             print(f"  [Translate] attempt {attempt + 1} failed: {e}")
             time.sleep(3)
-    print("  [Translate] all attempts failed — saving without Korean summary")
+    print("  [Translate] all attempts failed — saving without Korean title")
     return ""
 
 # ── arXiv ─────────────────────────────────────────────────────────────────────
@@ -149,15 +145,17 @@ def main():
 
     saved = 0
     for entry in winners:
-        title   = entry["title"]
-        score   = entry["score"]
+        title    = entry["title"]
+        score    = entry["score"]
         abstract = entry["summary"]
 
         print(f"  [{score:.2f}] {title[:65]}")
-        print(f"    Translating summary...")
-        korean_summary = make_korean_summary(abstract)
+        print(f"    Translating title...")
+        korean_summary = make_korean_summary(title)
         korean_line = f'koreanSummary: "{esc(korean_summary)}"\n' if korean_summary else ""
-
+        if korean_summary:
+            print(f"    Translation OK.")
+        
         content = (
             f'---\n'
             f'author: "CogniGraph Bot"\n'
