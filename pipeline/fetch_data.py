@@ -34,7 +34,7 @@ def _gemini_post(payload: dict) -> dict:
     """Raw POST to Gemini 1.5-flash. Returns parsed JSON response."""
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+        f"gemini-2.0-flash-lite:generateContent?key={GEMINI_API_KEY}"
     )
     body = json.dumps(payload).encode()
     req = urllib.request.Request(
@@ -72,7 +72,10 @@ def generate_metadata(title: str, abstract: str) -> dict:
     })
 
     try:
-        raw = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        raw = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+        if not raw:
+            print("    [Gemini] empty response")
+            return {"tags": ["cognitive-science"], "korean_summary": ""}
         # Strip markdown code fences if model wraps the JSON
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
         parsed = json.loads(raw)
