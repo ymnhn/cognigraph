@@ -45,7 +45,7 @@ def _gemini_post(payload: dict) -> dict:
                 return json.loads(resp.read())
         except Exception as e:
             print(f"  [Gemini] attempt {attempt + 1} failed: {e}")
-            time.sleep(10 * (attempt + 1))
+            time.sleep(65)  # free tier resets every 60s — wait 65s to guarantee a new window
     return {}
 
 

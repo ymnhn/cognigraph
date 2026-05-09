@@ -20,7 +20,7 @@ const { page } = Astro.props;
 
 <Layout title={`Posts | ${SITE.title}`}>
   <Header />
-  <Main pageTitle="모든 논문" pageDesc="큐레이션된 인지과학 연구 논문 전체 목록.">
+  <Main pageTitle="All Papers">
     <ul>
       {page.data.map(data => <Card {...data} />)}
     </ul>

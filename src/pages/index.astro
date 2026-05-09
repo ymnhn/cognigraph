@@ -25,8 +25,8 @@ const hasMore    = sorted.length > SITE.postPerIndex;
     {
       hasMore && (
         <div class="mt-4 text-center">
-          <LinkButton href="/posts/">
-            모든 논문 보기
+          <LinkButton href={`${import.meta.env.BASE_URL}posts/`}>
+            All papers
             <IconArrowRight class="inline-block rtl:-rotate-180" />
           </LinkButton>
         </div>
