@@ -4,7 +4,7 @@ pubDatetime: 2026-04-08T23:33:33.000Z
 title: "Cognitive-Causal Multi-Task Learning with Psychological State Conditioning for Assistive Driving Perception"
 featured: false
 draft: false
-tags: ["cognitive-science"]
+tags: ["research", "cognitive-science"]
 description: "[arXiv](https://arxiv.org/abs/2604.07651v1) — relevance score: 0.32"
 ---
 

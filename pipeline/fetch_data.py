@@ -1,6 +1,5 @@
 import os
 import re
-import json
 import time
 import urllib.request
 import urllib.parse
@@ -8,14 +7,15 @@ import urllib.error
 import feedparser
 from datetime import datetime, timezone
 from sentence_transformers import SentenceTransformer, util
+from googletrans import Translator
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 SEARCH_QUERY = (
     'all:"cognitive science" OR all:"neural manifolds" OR all:"active inference"'
 )
-FETCH_POOL_SIZE = 50   # papers pulled from arXiv per run
-TARGET_SAVED    = 5    # new papers to save per run
+FETCH_POOL_SIZE = 50
+TARGET_SAVED    = 5
 MODEL_NAME      = "all-MiniLM-L6-v2"
 OUTPUT_DIR      = "src/data/blog"
 
@@ -24,90 +24,27 @@ TARGET_CONCEPT = (
     "computational modeling, active inference, and brain functions."
 )
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_ENABLED = bool(GEMINI_API_KEY)
+# ── Translation ───────────────────────────────────────────────────────────────
 
-# ── Gemini ────────────────────────────────────────────────────────────────────
+def make_korean_summary(abstract: str) -> str:
+    """
+    Translate the first ~3 sentences of the abstract to Korean using
+    Google Translate (no API key, no rate limit quota).
+    """
+    # Take first 3 sentences (up to 600 chars) as the source for summary
+    sentences = re.split(r'(?<=[.!?])\s+', abstract.strip())
+    snippet = " ".join(sentences[:3])[:600]
 
-def _gemini_post(payload: dict) -> dict:
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-2.0-flash-lite:generateContent?key={GEMINI_API_KEY}"
-    )
-    body = json.dumps(payload).encode()
-    req = urllib.request.Request(
-        url, data=body, headers={"Content-Type": "application/json"}, method="POST"
-    )
+    translator = Translator()
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                return json.loads(resp.read())
+            result = translator.translate(snippet, src="en", dest="ko")
+            return result.text.strip()
         except Exception as e:
-            print(f"  [Gemini] attempt {attempt + 1} failed: {e}")
-            # Free tier resets every 60s. Sleep 65s to guarantee a new window.
-            time.sleep(65)
-    return {}
-
-
-def generate_metadata_batch(papers: list[dict]) -> list[dict]:
-    """
-    Single Gemini call for all winners at once.
-    5 papers = 1 API call, well within the 15 RPM free tier.
-    """
-    fallback = [{"tags": ["cognitive-science"], "korean_summary": ""} for _ in papers]
-    if not GEMINI_ENABLED:
-        print("  [Gemini] GEMINI_API_KEY not set — skipping metadata.")
-        return fallback
-
-    numbered = "\n\n".join(
-        f"[{i+1}] Title: {p['title']}\nAbstract: {p['abstract'][:800]}"
-        for i, p in enumerate(papers)
-    )
-    prompt = (
-        f"Analyze the following {len(papers)} papers and return ONLY a JSON array. "
-        "No markdown, no explanation, nothing else. "
-        "Array order must match paper number order.\n\n"
-        f"{numbered}\n\n"
-        "Return format:\n"
-        "[\n"
-        '  {"tags": ["lowercase-english-tag1", "tag2", "tag3"], '
-        '"korean_summary": "2~3 sentence Korean summary of the paper"},\n'
-        "  ...\n"
-        "]"
-    )
-
-    print(f"  [Gemini] batch request for {len(papers)} paper(s)...")
-    result = _gemini_post({
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 2048, "temperature": 0.2},
-    })
-
-    raw = ""
-    try:
-        raw = (
-            result.get("candidates", [{}])[0]
-            .get("content", {})
-            .get("parts", [{}])[0]
-            .get("text", "")
-            .strip()
-        )
-        if not raw:
-            print("  [Gemini] empty response — papers will be saved without summaries")
-            return fallback
-        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
-        parsed = json.loads(raw)
-        results = []
-        for item in parsed:
-            tags = [str(t).lower().replace(" ", "-") for t in item.get("tags", [])][:5]
-            summary = str(item.get("korean_summary", "")).strip()
-            results.append({"tags": tags or ["cognitive-science"], "korean_summary": summary})
-        while len(results) < len(papers):
-            results.append({"tags": ["cognitive-science"], "korean_summary": ""})
-        print(f"  [Gemini] done: {len(results)} paper(s) processed")
-        return results
-    except Exception as e:
-        print(f"  [Gemini] parse error: {e}  raw={raw[:200]!r}")
-        return fallback
+            print(f"  [Translate] attempt {attempt + 1} failed: {e}")
+            time.sleep(3)
+    print("  [Translate] all attempts failed — saving without Korean summary")
+    return ""
 
 # ── arXiv ─────────────────────────────────────────────────────────────────────
 
@@ -163,13 +100,9 @@ def astro_date(date_str: str) -> str:
 def esc(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
-def tags_yaml(tags: list[str]) -> str:
-    return "[" + ", ".join(f'"{t}"' for t in tags) + "]"
-
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    # Phase 1: load model + fetch arXiv
     print(f"Loading semantic model '{MODEL_NAME}'...")
     model = SentenceTransformer(MODEL_NAME)
     target_emb = model.encode(TARGET_CONCEPT, convert_to_tensor=True)
@@ -179,7 +112,6 @@ def main():
         print("No entries returned from arXiv.")
         return
 
-    # Phase 2: batch-score all papers in one tensor op
     print(f"Batch-scoring {len(entries)} papers...")
     texts = [f"{e['title']}. {e['summary']}" for e in entries]
     embeddings = model.encode(
@@ -192,7 +124,6 @@ def main():
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    # Pick top-scoring papers not already saved
     winners = []
     for entry in entries:
         if len(winners) >= TARGET_SAVED:
@@ -212,25 +143,20 @@ def main():
         winners.append(entry)
 
     print(f"Scoring done. {len(winners)} new paper(s) to save.")
-
     if not winners:
         print("Nothing new to save today.")
         return
 
-    # Phase 3: one batch Gemini call for all winners
-    papers_for_gemini = [
-        {"title": w["title"], "abstract": w["summary"]} for w in winners
-    ]
-    meta_list = generate_metadata_batch(papers_for_gemini)
-
-    # Phase 4: write files
     saved = 0
-    for entry, meta in zip(winners, meta_list):
-        title    = entry["title"]
-        score    = entry["score"]
-        summary  = meta["korean_summary"]
-        new_tags = tags_yaml(meta["tags"])
-        korean_line = f'koreanSummary: "{esc(summary)}"\n' if summary else ""
+    for entry in winners:
+        title   = entry["title"]
+        score   = entry["score"]
+        abstract = entry["summary"]
+
+        print(f"  [{score:.2f}] {title[:65]}")
+        print(f"    Translating summary...")
+        korean_summary = make_korean_summary(abstract)
+        korean_line = f'koreanSummary: "{esc(korean_summary)}"\n' if korean_summary else ""
 
         content = (
             f'---\n'
@@ -239,19 +165,19 @@ def main():
             f'title: "{esc(title)}"\n'
             f'featured: false\n'
             f'draft: false\n'
-            f'tags: {new_tags}\n'
+            f'tags: ["cognitive-science"]\n'
             f'description: "[arXiv]({entry["link"]}) — relevance score: {score:.2f}"\n'
             f'{korean_line}'
             f'---\n\n'
             f'## Abstract\n\n'
-            f'{entry["summary"][:2000]}\n\n'
+            f'{abstract[:2000]}\n\n'
             f'---\n\n'
             f'*Relevance score: {score:.4f}*\n'
         )
 
         with open(entry["fpath"], "w", encoding="utf-8") as f:
             f.write(content)
-        print(f"  Saved [{score:.2f}]: {title[:65]}")
+        print(f"    Saved.")
         saved += 1
 
     print(f"\nDone. {saved} new paper(s) saved.")
