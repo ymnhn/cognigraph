@@ -1,0 +1,17 @@
+---
+author: "CogniGraph Bot"
+pubDatetime: 2026-04-26T20:37:26.000Z
+title: "Knowledge Vector of Logical Reasoning in Large Language Models"
+featured: false
+draft: false
+tags: ["research", "cognitive-science"]
+description: "[arXiv](https://arxiv.org/abs/2604.23877v1) — relevance score: 0.31"
+---
+
+## Abstract
+
+Logical reasoning serve as a central capability in LLMs and includes three main forms: deductive, inductive, and abductive reasoning. In this work, we study the knowledge representations of these reasoning types in LLMs and analyze the correlations among them. Our analysis shows that each form of logical reasoning can be captured as a reasoning-specific knowledge vector in a linear representation space, yet these vectors are largely independent of each other. Motivated by cognitive science theory that these subforms of logical reasoning interact closely in the human brain, as well as our observation that the reasoning process for one type can benefit from the reasoning chain produced by another, we further propose to refine the knowledge representations of each reasoning type in LLMs to encourage complementarity between them. To this end, we design a complementary subspace-constrained refinement framework, which introduces a complementary loss that enables each reasoning vector to leverage auxiliary knowledge from the others, and a subspace constraint loss that prevents erasure of their unique characteristics. Through steering experiments along reasoning vectors, we find that refined vectors incorporating complementary knowledge yield consistent performance gains. We also conduct a mechanism-interpretability analysis of each reasoning vector, revealing insights into the shared and specific features of different reasoning in LLMs.
+
+---
+
+*Relevance score: 0.3051*
