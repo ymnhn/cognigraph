@@ -4,7 +4,7 @@ pubDatetime: 2026-04-28T14:06:23.000Z
 title: "Modeling Human-Like Color Naming Behavior in Context"
 featured: false
 draft: false
-tags: ["research", "cognitive-science"]
+tags: ["cognitive-science"]
 description: "[arXiv](https://arxiv.org/abs/2604.25674v1) — relevance score: 0.32"
 ---
 
