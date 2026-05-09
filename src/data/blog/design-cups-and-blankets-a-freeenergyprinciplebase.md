@@ -4,7 +4,7 @@ pubDatetime: 2026-04-24T14:04:16.000Z
 title: "Design, Cups, and Blankets. A Free-Energy-Principle-Based Approach to Product Design"
 featured: false
 draft: false
-tags: ["research", "cognitive-science"]
+tags: ["cognitive-science"]
 description: "[arXiv](https://arxiv.org/abs/2604.22902v2) — relevance score: 0.34"
 ---
 
