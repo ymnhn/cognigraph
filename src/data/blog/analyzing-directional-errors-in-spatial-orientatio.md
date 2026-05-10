@@ -1,0 +1,8 @@
+---
+pubDatetime: 2026-04-23T10:01:03.000Z
+title: "Analyzing directional errors in spatial orientation using nonparametric circular regression with mixed covariates"
+link: "https://arxiv.org/abs/2604.21498v1"
+koreanSummary: "혼합 공변량을 사용한 비모수 순환 회귀를 사용하여 공간 방향의 방향 오류 분석"
+---
+
+Spatial orientation is a fundamental cognitive skill that relies on sensory information to update perceived direction. Understanding how sensory conditions influence directional accuracy is important for both cognitive science and the design of assistive technologies. We analyze experimental data in which blind, low-vision, and sighted participants performed spatial updating tasks under five sensory conditions, with signed angular error as the response. To model these data, we propose a nonparametric circular regression framework that accommodates both continuous and categorical predictors via a product-kernel estimator. Bandwidth selection is crucial in this setting, yet developing practical data-driven methods remains challenging. We derive asymptotic bias and variance expressions for the estimator, though these results do not directly lead to a feasible plug-in bandwidth selector. To address this, we develop a bootstrap bandwidth selection criterion tailored to the cosine loss and compare it with cross-validation and rule-of-thumb approaches in simulation studies. Applied to the spatial updating data, the proposed framework reveals nonlinear, condition-specific patterns and quantifies uncertainty via simultaneous bootstrap confidence bands. Across the scenarios considered, the proposed bootstrap selector achieves a favorable bias-variance trade-off and yields stable inference relative to the competing methods. An implementation is available in the R package circMixedReg.
