@@ -1,10 +1,8 @@
-name: CogniGraph
+name: Sync
 
 on:
   schedule:
     - cron: '0 0 * * *'
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -33,35 +31,11 @@ jobs:
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          if ls src/data/blog/*.md 1>/dev/null 2>&1; then
-            git add src/data/blog/*.md
+          if ls src/data/*.md 1>/dev/null 2>&1; then
+            git add src/data/*.md
             if ! git diff --cached --quiet; then
               git commit -m "chore: add papers"
               git pull --rebase
               git push
             fi
           fi
-
-  build:
-    needs: sync
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: withastro/action@v3
-        with:
-          package-manager: npm
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-    permissions:
-      pages: write
-      id-token: write
-    steps:
-      - uses: actions/deploy-pages@v4
