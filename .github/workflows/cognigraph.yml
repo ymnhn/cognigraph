@@ -33,6 +33,7 @@ jobs:
             git add src/data/blog/*.md
             if ! git diff --cached --quiet; then
               git commit -m "chore: add papers"
+              git pull --rebase
               git push
             fi
           fi
