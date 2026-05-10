@@ -1,0 +1,67 @@
+name: sync
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  push:
+    branches: [main]       # deploy when main is updated
+  workflow_dispatch:       # manual deploy
+
+jobs:
+  # Runs on schedule only. Commits new papers, which triggers the deploy job
+  # via the push event — no [skip ci], so the push itself kicks off deploy.
+  sync:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install feedparser sentence-transformers torch deep-translator
+
+      - name: Run pipeline
+        run: python fetch.py
+
+      - name: Commit new papers
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          if ls src/data/blog/*.md 1>/dev/null 2>&1; then
+            git add src/data/blog/*.md
+            if ! git diff --cached --quiet; then
+              git commit -m "chore: add papers"
+              git push
+            fi
+          fi
+
+  # Runs on push to main (including the push from sync) and on manual dispatch.
+  build:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: withastro/action@v3
+        with:
+          package-manager: npm
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/deploy-pages@v4
