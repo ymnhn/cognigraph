@@ -16,6 +16,7 @@ const allUrl = import.meta.env.BASE_URL.replace(/\/?$/, "/") + "posts/";
 <Layout>
   <Header />
   <main id="main-content" class="app-layout pt-6 pb-4">
+    <h1 class="mt-6 mb-0 text-2xl font-semibold">Today</h1>
     <ul>
       {recent.map(post => <Card {...post} />)}
     </ul>
