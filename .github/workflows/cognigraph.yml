@@ -1,4 +1,4 @@
-name: sync
+name: CogniGraph
 
 on:
   schedule:
@@ -11,7 +11,7 @@ jobs:
   # Runs on schedule only. Commits new papers, which triggers the deploy job
   # via the push event — no [skip ci], so the push itself kicks off deploy.
   sync:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -26,7 +26,7 @@ jobs:
         run: pip install feedparser sentence-transformers torch deep-translator
 
       - name: Run pipeline
-        run: python fetch.py
+        run: python fetch_data.py
 
       - name: Commit new papers
         run: |
@@ -40,9 +40,9 @@ jobs:
             fi
           fi
 
-  # Runs on push to main (including the push from sync) and on manual dispatch.
+  # Runs on push to main (including the push from sync).
   build:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -56,7 +56,7 @@ jobs:
 
   deploy:
     needs: build
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
