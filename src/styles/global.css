@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "./typography.css";
 
 :root {
   --background: #fdfdfd;
@@ -9,7 +8,6 @@
   --border: #ece9e9;
 }
 
-/* Map CSS variables to Tailwind v4 theme tokens */
 @theme inline {
   --font-app: Inter, ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
@@ -21,38 +19,21 @@
 
 @layer base {
   * {
-    @apply border-border outline-accent/75;
-    scrollbar-width: auto;
+    @apply border-border;
+    scrollbar-width: thin;
     scrollbar-color: var(--muted) transparent;
   }
   html {
     @apply overflow-y-scroll scroll-smooth;
   }
   body {
-    @apply flex min-h-svh flex-col bg-background font-app text-foreground selection:bg-accent/75 selection:text-background;
+    @apply flex min-h-svh flex-col bg-background font-app text-foreground;
   }
-  a,
-  button {
-    @apply outline-offset-1 outline-accent focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-dashed;
+  a, button {
+    @apply outline-offset-1 outline-accent/75 focus-visible:outline-2 focus-visible:outline-dashed;
   }
-  button:not(:disabled),
-  [role="button"]:not(:disabled) {
-    cursor: pointer;
-  }
-}
-
-@utility max-w-app {
-  @apply max-w-3xl;
 }
 
 @utility app-layout {
-  @apply mx-auto w-full max-w-app px-4;
-}
-
-.active-nav {
-  @apply underline decoration-wavy decoration-2 underline-offset-8;
-}
-
-:target {
-  scroll-margin-block: 1rem;
+  @apply mx-auto w-full max-w-3xl px-4;
 }

@@ -1,4 +1,0 @@
-feedparser
-sentence-transformers
-torch
-deep-translator

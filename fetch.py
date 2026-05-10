@@ -1,0 +1,136 @@
+import os
+import re
+import time
+import urllib.request
+import urllib.parse
+import urllib.error
+import feedparser
+from datetime import datetime, timezone
+from sentence_transformers import SentenceTransformer, util
+from deep_translator import GoogleTranslator
+
+SEARCH_QUERY = (
+    'all:"cognitive science" OR all:"neural manifolds" OR all:"active inference"'
+)
+FETCH_POOL  = 50
+SAVE_TARGET = 5
+MODEL       = "all-MiniLM-L6-v2"
+OUT_DIR     = "src/data/blog"
+CONCEPT     = (
+    "Cognitive science research involving neural representations, "
+    "computational modeling, active inference, and brain functions."
+)
+
+
+def translate(text: str) -> str:
+    for attempt in range(3):
+        try:
+            result = GoogleTranslator(source="en", target="ko").translate(text)
+            if result:
+                return result.strip()
+        except Exception as e:
+            print(f"  [translate] attempt {attempt + 1}: {e}")
+            time.sleep(3)
+    return ""
+
+
+def fetch_arxiv(n: int) -> list[dict]:
+    url = "http://export.arxiv.org/api/query?" + urllib.parse.urlencode({
+        "search_query": SEARCH_QUERY,
+        "start": 0,
+        "max_results": n,
+        "sortBy": "submittedDate",
+        "sortOrder": "descending",
+    })
+    print(f"Fetching {n} papers from arXiv...")
+    for attempt in range(3):
+        try:
+            feed = feedparser.parse(urllib.request.urlopen(url, timeout=30).read())
+            return [
+                {
+                    "title":     e.get("title", "").strip().replace("\n", " "),
+                    "summary":   e.get("summary", "").strip().replace("\n", " "),
+                    "link":      e.get("link", ""),
+                    "published": e.get("published", ""),
+                }
+                for e in feed.get("entries", [])
+                if e.get("title") and e.get("link")
+            ]
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                time.sleep(20 * (attempt + 1))
+            else:
+                raise
+    raise Exception("arXiv unreachable after 3 attempts")
+
+
+def to_slug(title: str, max_len: int = 50) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:max_len].rstrip("-")
+
+
+def to_astro_date(s: str) -> str:
+    dt = datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
+def esc(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def main():
+    print(f"Loading {MODEL}...")
+    model = SentenceTransformer(MODEL)
+    anchor = model.encode(CONCEPT, convert_to_tensor=True)
+
+    entries = fetch_arxiv(FETCH_POOL)
+    if not entries:
+        print("No entries from arXiv.")
+        return
+
+    print(f"Scoring {len(entries)} papers...")
+    embs = model.encode(
+        [f"{e['title']}. {e['summary']}" for e in entries],
+        convert_to_tensor=True, batch_size=32, show_progress_bar=False,
+    )
+    for entry, score in zip(entries, util.pytorch_cos_sim(anchor, embs)[0].tolist()):
+        entry["score"] = score
+    entries.sort(key=lambda x: x["score"], reverse=True)
+
+    os.makedirs(OUT_DIR, exist_ok=True)
+
+    saved = 0
+    for entry in entries:
+        if saved >= SAVE_TARGET:
+            break
+        slug = to_slug(entry["title"])
+        if not slug or os.path.exists(os.path.join(OUT_DIR, f"{slug}.md")):
+            continue
+        try:
+            pub = to_astro_date(entry["published"])
+        except ValueError:
+            continue
+
+        title = entry["title"]
+        score = entry["score"]
+        print(f"  [{score:.2f}] {title[:65]}")
+
+        korean = translate(title)
+        korean_line = f'koreanSummary: "{esc(korean)}"\n' if korean else ""
+
+        with open(os.path.join(OUT_DIR, f"{slug}.md"), "w", encoding="utf-8") as f:
+            f.write(
+                f'---\n'
+                f'pubDatetime: {pub}\n'
+                f'title: "{esc(title)}"\n'
+                f'link: "{entry["link"]}"\n'
+                f'{korean_line}'
+                f'---\n\n'
+                f'{entry["summary"][:2000]}\n'
+            )
+        saved += 1
+
+    print(f"\nDone. {saved} paper(s) saved.")
+
+
+if __name__ == "__main__":
+    main()

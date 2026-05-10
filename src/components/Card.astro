@@ -2,31 +2,23 @@
 import type { CollectionEntry } from "astro:content";
 import Datetime from "./Datetime.astro";
 
-type Props = {
-  variant?: "h2" | "h3";
-} & CollectionEntry<"blog">;
+type Props = CollectionEntry<"blog">;
 
-const { variant: Heading = "h2", data } = Astro.props;
-const { title, description, koreanSummary, ...props } = data;
-
-// Extract arXiv URL from description: "[arXiv](https://arxiv.org/abs/...) — ..."
-const arXivMatch = description?.match(/\[arXiv\]\((https?:\/\/[^)]+)\)/);
-const arXivUrl   = arXivMatch?.[1] ?? "#";
+const { data } = Astro.props;
+const { title, link, koreanSummary, pubDatetime } = data;
 ---
 
-<li class="my-6 border-b border-border pb-6 last:border-0">
+<li class="border-b border-border last:border-0 py-5">
   <a
-    href={arXivUrl}
+    href={link}
     target="_blank"
     rel="noopener noreferrer"
-    class="inline-block font-medium text-accent decoration-dashed underline-offset-4 hover:underline focus-visible:no-underline"
+    class="font-medium text-accent hover:underline decoration-dashed underline-offset-4"
   >
-    <Heading class="text-base sm:text-lg leading-snug">{title}</Heading>
+    {title}
   </a>
-
-  <Datetime {...props} class="mt-1" />
-
+  <Datetime {pubDatetime} class="mt-1" />
   {koreanSummary && (
-    <p class="mt-2 text-sm leading-relaxed opacity-75">{koreanSummary}</p>
+    <p class="mt-1.5 text-sm leading-relaxed opacity-65">{koreanSummary}</p>
   )}
 </li>
