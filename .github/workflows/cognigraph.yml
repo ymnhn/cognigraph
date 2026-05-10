@@ -4,14 +4,11 @@ on:
   schedule:
     - cron: '0 * * * *'
   push:
-    branches: [main]       # deploy when main is updated
-  workflow_dispatch:       # manual deploy
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  # Runs on schedule only. Commits new papers, which triggers the deploy job
-  # via the push event — no [skip ci], so the push itself kicks off deploy.
   sync:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -40,9 +37,8 @@ jobs:
             fi
           fi
 
-  # Runs on push to main (including the push from sync).
   build:
-    if: github.event_name == 'push'
+    needs: sync
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -56,7 +52,6 @@ jobs:
 
   deploy:
     needs: build
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
