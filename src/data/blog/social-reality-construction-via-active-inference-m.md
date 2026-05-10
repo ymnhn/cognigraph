@@ -1,0 +1,8 @@
+---
+pubDatetime: 2026-04-10T06:43:50.000Z
+title: "Social Reality Construction via Active Inference: Modeling the Dialectic of Conformity and Creativity"
+link: "https://arxiv.org/abs/2604.09026v1"
+koreanSummary: "능동적 추론을 통한 사회적 현실 구축: 순응과 창의성의 변증법 모델링"
+---
+
+Social agents both internalize collective norms and reshape them through creative action, yet computational models have not captured this bidirectional process within a unified framework. We propose a multi-agent simulation model grounded in active inference that formalizes the dialectical constitution of social reality on a structured social network. Each agent maintains an internal generative model, communicates with neighbors to form social priors, creates novel observations, and selectively incorporates others' creations into memory. Simulation experiments demonstrate three main findings. First, informationally cohesive social groups emerge endogenously, with representational alignment mirroring the cluster topology of the underlying network. Second, a circular mutual constitution arises between social representations and the observation distribution, maintained through agents' creative acts that project representational structure onto the external world. Third, the propagation of creations exhibits selective, heterogeneous patterns distinct from the stable diffusion of social representations, indicating that agents construct cultural niches through local interaction dynamics. These results suggest that the interplay between social conformity and creative deviation can give rise to the endogenous formation and differentiation of shared social reality.
