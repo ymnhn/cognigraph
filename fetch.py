@@ -43,9 +43,21 @@ def fetch_arxiv(n: int) -> list[dict]:
         "sortOrder": "descending",
     })
     print(f"Fetching {n} papers from arXiv...")
+    
+    # Define a clean request with a custom User-Agent to avoid getting auto-blocked
+    req = urllib.request.Request(
+        url,
+        headers={
+            'User-Agent': 'CognigraphBot/1.0 (github.com/runner/work/cognigraph; contact-your-email@example.com)'
+        }
+    )
+    
     for attempt in range(3):
         try:
-            feed = feedparser.parse(urllib.request.urlopen(url, timeout=30).read())
+            # Added a 30s timeout here to avoid hanging infinitely
+            with urllib.request.urlopen(req, timeout=30) as response:
+                feed = feedparser.parse(response.read())
+                
             return [
                 {
                     "title":     e.get("title", "").strip().replace("\n", " "),
@@ -53,16 +65,22 @@ def fetch_arxiv(n: int) -> list[dict]:
                     "link":      e.get("link", ""),
                     "published": e.get("published", ""),
                 }
-                for e in feed.get("entries", [])
-                if e.get("title") and e.get("link")
+                : e.get("title") and e.get("link")
             ]
+            
         except urllib.error.HTTPError as e:
-            if e.code == 429:
-                time.sleep(20 * (attempt + 1))
-            else:
-                raise
+            # Handle rate limiting (429) or temporary server errors (5xx)
+            sleep_time = 20 * (attempt + 1)
+            print(f"  [arXiv HTTP Error {e.code}] Attempt {attempt + 1} failed. Waiting {sleep_time}s...")
+            time.sleep(sleep_time)
+            
+        except (urllib.error.URLError, Exception) as e:
+            # Crucial: Catch timeouts and network drops, and apply an exponential backoff
+            sleep_time = 10 * (attempt + 1)
+            print(f"  [arXiv Network Error] {e}. Attempt {attempt + 1} failed. Waiting {sleep_time}s...")
+            time.sleep(sleep_time)
+            
     raise Exception("arXiv unreachable after 3 attempts")
-
 
 def to_slug(title: str, max_len: int = 50) -> str:
     return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:max_len].rstrip("-")
