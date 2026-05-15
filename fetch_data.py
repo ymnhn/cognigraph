@@ -15,7 +15,7 @@ SEARCH_QUERY = (
 FETCH_POOL  = 50
 SAVE_TARGET = 5
 MODEL       = "all-MiniLM-L6-v2"
-OUT_DIR     = "src/data/blog"
+OUT_DIR     = "src/data"
 CONCEPT     = (
     "Cognitive science research involving neural representations, "
     "computational modeling, active inference, and brain functions."

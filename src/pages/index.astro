@@ -1,8 +1,6 @@
 ---
 import { getCollection } from "astro:content";
 import Layout from "@/layouts/Layout.astro";
-import Header from "@/components/Header.astro";
-import Footer from "@/components/Footer.astro";
 import Card from "@/components/Card.astro";
 import getSortedPosts from "@/utils/getSortedPosts";
 import { SITE } from "@/config";
@@ -13,8 +11,7 @@ const hasMore = posts.length > SITE.postPerIndex;
 const allUrl = import.meta.env.BASE_URL.replace(/\/?$/, "/") + "posts/";
 ---
 
-<Layout>
-  <Header />
+<Layout title="Today">
   <main id="main-content" class="app-layout pt-6 pb-4">
     <h1 class="mt-6 mb-0 text-2xl font-semibold">Today</h1>
     <ul>
@@ -28,5 +25,4 @@ const allUrl = import.meta.env.BASE_URL.replace(/\/?$/, "/") + "posts/";
       </p>
     )}
   </main>
-  <Footer />
 </Layout>
