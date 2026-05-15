@@ -65,7 +65,8 @@ def fetch_arxiv(n: int) -> list[dict]:
                     "link":      e.get("link", ""),
                     "published": e.get("published", ""),
                 }
-                : e.get("title") and e.get("link")
+                for e in feed.get("entries", [])
+                if e.get("title") and e.get("link")
             ]
             
         except urllib.error.HTTPError as e:
