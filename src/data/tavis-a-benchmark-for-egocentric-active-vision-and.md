@@ -1,0 +1,8 @@
+---
+pubDatetime: 2026-05-08T16:11:13.000Z
+title: "TAVIS: A Benchmark for Egocentric Active Vision and Anticipatory Gaze in Imitation Learning"
+link: "https://arxiv.org/abs/2605.07943v1"
+koreanSummary: "TAVIS: 모방 학습에서 자기중심적 능동 시각 및 예측 시선에 대한 벤치마크"
+---
+
+Active vision -- where a policy controls its own gaze during manipulation -- has emerged as a key capability for imitation learning, with multiple independent systems demonstrating its benefits in the past year. Yet there is no shared benchmark to compare approaches or quantify what active vision contributes, on which task types, and under what conditions. We introduce TAVIS, evaluation infrastructure for active-vision imitation learning, with two complementary task suites -- TAVIS-Head (5 tasks, global search via pan/tilt necks) and TAVIS-Hands (3 tasks, local occlusion via wrist cameras) -- on two humanoid torso embodiments (GR1T2, Reachy2), built on IsaacLab. TAVIS provides three evaluation primitives: a paired headcam-vs-fixedcam protocol on identical demonstrations; GALT (Gaze-Action Lead Time), a novel metric grounded in cognitive science and HRI that quantifies anticipatory gaze in learned policies; and procedural ID/OOD splits. Baseline experiments with Diffusion Policy and $π_0$ reveal that (i) active-vision generally helps, but benefits are task-conditional rather than uniform; (ii) multi-task policies degrade sharply under controlled distribution shifts on both suites; and (iii) imitation alone yields anticipatory gaze, with median lead times comparable to the human teleoperator reference. Code, evaluation scripts, demonstrations (LeRobot v3.0; ~2200 episodes) and trained baselines are released at https://github.com/spiglerg/tavis and https://huggingface.co/tavis-benchmark.
