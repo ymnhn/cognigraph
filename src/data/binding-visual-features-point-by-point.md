@@ -1,0 +1,8 @@
+---
+pubDatetime: 2026-05-25T04:58:23.000Z
+title: "Binding Visual Features Point by Point"
+link: "https://arxiv.org/abs/2605.25427v1"
+koreanSummary: "시각적 특징을 지점별로 바인딩하기"
+---
+
+Despite success on standard benchmarks, vision language models display persistent failures on tasks involving processing of multi-object scenes, including many tasks that are relatively easy for humans. Recent work has found that these failures may stem from a basic inability to accurately bind object features in-context, a challenge that is referred to as the "binding problem" in cognitive science and neuroscience. The human visual system is thought to solve this binding problem via serial processing, attending to individual objects one at a time so as to avoid interference from other objects. Recent work has proposed "pointing" -- the use of explicit spatial coordinates to refer to objects -- as an analogous solution for vision language models, and found that it improves performance on challenging multi-object tasks. However, it is unclear $\textit{why}$ (i.e., on a mechanistic or representational level) this approach improves performance, and how directly this relates to serial processing in human vision. Here, we investigate this question. We find that learning to point-via-text induces an internal visual search routine, and we characterize the mechanisms that support this procedure. We also find that pointing behavior can be generalized to new tasks via fine-tuning, and that doing so eliminates binding errors and enables compositional generalization. These results provide a proof-of-principle that serial processing can solve the binding problem for vision language models just as it does for biological vision.
