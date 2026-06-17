@@ -1,0 +1,8 @@
+---
+pubDatetime: 2026-06-16T08:16:17.000Z
+title: "Using Cognitive Models to Improve Language Model Simulation of Human Persuasion Games"
+link: "https://arxiv.org/abs/2606.17657v1"
+koreanSummary: "인지 모델을 사용하여 인간 설득 게임의 언어 모델 시뮬레이션 개선"
+---
+
+People make decisions differently in strategic interactions. Some update beliefs like a Bayesian; others exhibit biases like motivated reasoning. Although creators of large language models use simulated humans for safety evaluations and training, they often fail to cover this breadth of human behavior. We argue that cognitive science and economics provide a convenient tool for doing so, making use of mathematical models of human decision-making. We propose an approach that we call Equation-to-Behavior Prompting for guiding large language models to match cognitive models, and evaluate this approach on persuasion games based on legal decision-making. We find that large models can approximate equation-based specifications -- Bayesian updating, affine distortion, motivated updating, and Grether's $α$-$β$ model -- using prompting, but small models fail to do so. However, training small models with reinforcement learning to adhere to mathematical rules, Equation-to-Behavior RL, reduces belief error by 26.5% in out-of-distribution parameterizations. We show that these simulations can help create diverse training environments; training small models to consider different kinds of decision-makers improves average belief change by 2.5%--12% over Bayesian-only training, even when persuading GPT-5-mini. Our work could improve human simulations for training and evaluation in increasingly realistic settings, and could also enable novel research into more complicated mathematical models of human decision-making.
