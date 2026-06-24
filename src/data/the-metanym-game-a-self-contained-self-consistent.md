@@ -1,0 +1,8 @@
+---
+pubDatetime: 2026-06-19T00:43:29.000Z
+title: "The Metanym Game: A Self-Contained, Self-Consistent LLM Peer-Community Benchmark for Structural Intelligence"
+link: "https://arxiv.org/abs/2606.21008v1"
+koreanSummary: "Metanym 게임: 구조적 지능을 위한 독립적이고 일관성 있는 LLM 동료 커뮤니티 벤치마크"
+---
+
+The metanym game is a competitive word game for LLMs that measures structural intelligence against established cognitive-science constructs. No content is given in advance; the contestants create all of it -- a new kind of analogy test, analogical production falsifiable sentence by sentence, with no fixed test set to leak into training (contamination-resistant by construction). In the council-of-peers benchmark, the contestants also rate each other's creations. We introduce the first spectral solution, to our knowledge, to the wicked problem of benchmarking LLMs' factual accuracy without golden keys or oracle models: one singular value decomposition of the evaluators' ratings matrix yields their competence as both generators and judges of true statements at once. Competence on the subjective criteria comes from each judge's rating consistency as the yardstick shifts. The factual rating correlates with GPQA Diamond at Pearson r = 0.92. Scored separately, making and judging dissociate -- judging is the scarcer skill: the strongest generators are middling judges, the sharpest judge a mid-pack generator. To scale, the strongest players form a council that does the official benchmarking; its seats are contestable -- a stronger model earns one on the benchmark's own rating. The benchmark is entirely self-contained and self-consistent, a stable gauge over time.
