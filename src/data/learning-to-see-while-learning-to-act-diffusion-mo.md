@@ -1,0 +1,8 @@
+---
+pubDatetime: 2026-06-22T17:19:57.000Z
+title: "Learning to See While Learning to Act: Diffusion Models for Active Perception in Robot Imitation"
+link: "https://arxiv.org/abs/2606.23625v1"
+koreanSummary: "행동하는 법을 배우면서 보는 법 배우기: 로봇 모방의 능동적 인식을 위한 확산 모델"
+---
+
+Most imitation learning methods assume full observability in table-top settings. In practice, objects are often occluded, requiring robots to both search and act, and learning this coupled behavior from limited demonstrations remains challenging. We propose See2Act, an imitation learning approach that conditions action prediction on a sequence of actively-inferred viewpoints at test time, by coupling action denoising with viewpoint refinement. The policy is trained using camera poses anchored to keyframe actions from offline demonstrations, enabling implicit learning of where to see, while learning how to act. We empirically demonstrate that in Ravens the policy recovers informative viewpoints under severe occlusions, and on RLBench tasks it improves performance by up to 34% over prior methods. In the real world, we collect 50 demonstrations in a digital twin and achieve zero-shot sim-to-real transfer on pick-and-place tasks using depth observations. The policy handles significant occlusions, showing that learned viewpoint reasoning enables robust manipulation under partial observability.
