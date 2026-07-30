@@ -1,0 +1,8 @@
+---
+pubDatetime: 2026-07-27T22:53:58.000Z
+title: "Beyond the Post Hoc User Study: Modeling Visual Decision-Making with Active Inference"
+link: "https://arxiv.org/abs/2607.25131v1"
+koreanSummary: "사후 사용자 연구를 넘어서: 능동적 추론을 통한 시각적 의사결정 모델링"
+---
+
+Empirical user studies are essential for evaluating visual encodings and can reveal perceptual and cognitive mechanisms, but they do not by themselves provide causal, predictive accounts of interpretation errors. Evaluations are therefore often post hoc: they measure performance after a design has been specified rather than predicting how attention, uncertainty, memory, and bias may produce accurate or erroneous judgments. To address this mechanistic gap, we translate a cognitive theory of visualization interpretation into executable simulation using Active Inference, a probabilistic framework for perception, learning, and action. We model chart reading as dynamic visual search in which agents update beliefs and choose actions that balance uncertainty reduction against cognitive effort. As a proof of concept, we implement Fast, heuristic (Type 1) and Slow, analytic (Type 2) agents for a bar-chart average-estimation task. The Fast agent is vulnerable to tick-salience bias, whereas the Slow agent is more vulnerable to working-memory decay. Both produce inspectable cognitive traces, including evolving belief uncertainty and fixation sequences. By expressing these hypothesized failure mechanisms as interpretable parameters, the architecture provides a framework for formalizing and testing mechanistic hypotheses about visualization interpretation. Empirical studies can then parameterize, refine, or falsify these simulations, supporting earlier and more predictive in silico evaluation of visualization efficacy.

@@ -1,0 +1,8 @@
+---
+pubDatetime: 2026-07-27T00:14:21.000Z
+title: "Embodied GPT-5.1: Evidence of a World Model?"
+link: "https://arxiv.org/abs/2607.23899v1"
+koreanSummary: "구현된 GPT-5.1: 세계 모델의 증거?"
+---
+
+This exploratory study examines whether a large multimodal language model, GPT-5.1, can serve as the high-level controller of a physical mobile robot despite having no prior embodiment, no training in simulated environments, and no exposure to sensorimotor experience. Using only low-resolution first-person images and a discrete action set, the model was tasked with navigation and object-directed behaviors such as locating and contacting a target toy. Across multiple trials, GPT-5.1 demonstrated emergent capabilities that suggest elements of spatial reasoning and physical understanding. These included maintaining short-term memory of object locations after they left the camera frame, inferring the physical consequences of its own movements, and executing coherent action sequences such as colliding with an object and reversing to visually verify the outcome. At the same time, the model displayed inefficiencies and perceptual limitations, including imprecise alignment strategies and occasional misidentification of distant distractors. Overall, the results indicate that GPT-5.1 exhibits signs of world-model-like behavior in an embodied setting, despite the absence of any embodiment-related training, a finding that challenges long-standing views in cognitive science and robotics which hold that a physical body is a necessary prerequisite for developing such forms of intelligence. The findings motivate deeper investigation into the emergence, limits, and robustness of physical understanding in large language models.
