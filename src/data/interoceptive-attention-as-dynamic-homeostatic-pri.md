@@ -1,0 +1,8 @@
+---
+pubDatetime: 2026-08-04T21:18:45.000Z
+title: "Interoceptive Attention as Dynamic Homeostatic Prioritization in a Foraging Agent"
+link: "https://arxiv.org/abs/2608.04232v1"
+koreanSummary: "수렵 에이전트의 동적 항상성 우선 순위 지정으로서의 상호 수용성 주의"
+---
+
+Biological systems must regulate competing needs under limited perceptual bandwidth, where sharpening one estimate costs the capacity to sharpen the others. Any fixed-budget system therefore has to decide where to allocate its perceptual precision. We study this in a foraging agent that must keep several bodily needs satisfied to survive, modelled with active inference. At each step it reads its own body-state beliefs, identifies the most-needed channel, and reallocates a fixed budget of interoceptive precision toward it, so that the same precision-shaped likelihood feeds both belief update and planning. In AffectWorld, a four-channel foraging gridworld, this selective allocation more than doubles learning-phase survival at matched budget against a uniform-precision agent ($0.414$ vs $0.199$ across 11 layouts, $n{=}32$ seeds each, paired cluster-bootstrap $p \leq 10^{-4}$). Two further results sharpen the mechanism. The benefit runs through planning as well as perception, since denying the shaped likelihood to the planner alone removes about half of it. It is also need-aligned, since aiming precision at the least-needed channel does worse than spreading it evenly. The attended channel additionally learns its own dynamics about twice as fast, and stays ahead even at matched observation count, a behavioural trace of the same precision routing, visible in learning speed, not survival.
